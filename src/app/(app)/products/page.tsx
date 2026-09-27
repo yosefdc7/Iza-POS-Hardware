@@ -27,6 +27,7 @@ export default async function ProductsPage() {
   let products;
   try {
     const raw = await prisma.product.findMany({
+      include: { packagings: true },
       orderBy: { createdAt: "desc" },
     });
     products = serialize(raw);

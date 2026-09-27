@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ transaction: vi.fn() }));
 vi.mock('@/lib/db', () => ({ prisma: { $transaction: mocks.transaction } }));

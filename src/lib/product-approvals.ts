@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { prisma } from '@/lib/db';
 import { Prisma } from '@/generated/prisma/client';
 import { productFormSchema, packagingFormSchema } from '@/lib/validations/product';

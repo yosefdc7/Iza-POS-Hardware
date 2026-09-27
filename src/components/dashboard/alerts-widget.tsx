@@ -533,6 +533,7 @@ export function AlertsWidget({
           productId={adjustTarget.id}
           productName={adjustTarget.name}
           currentStock={adjustTarget.stock}
+          unit={adjustTarget.unit || "pc"}
           onClose={() => {
             setAdjustTarget(null);
             fetchAlerts(true);

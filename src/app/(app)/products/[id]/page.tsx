@@ -12,6 +12,7 @@ import { ProductPrintHistoryButton } from "@/components/products/product-print-h
 import { PackagingSection } from "@/components/products/packaging-section";
 import { DbError } from "@/components/ui/db-error";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { computeStockBreakdown } from "@/lib/hardware-units";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,12 @@ export default async function ProductDetailPage({ params }: Props) {
     0
   );
 
+  const breakdown = computeStockBreakdown(
+    Number(product.stock),
+    product.unit || "pc",
+    product.packagings || []
+  );
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6 print:p-0 print:max-w-none print:space-y-4">
       {/* Breadcrumb - hidden during print */}
@@ -101,10 +108,13 @@ export default async function ProductDetailPage({ params }: Props) {
 
       {/* Actions - hidden during print */}
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <StockAdjustButton isStaff={user.role!=="ADMIN"}
+        <StockAdjustButton
+          isStaff={user.role !== "ADMIN"}
           productId={product.id}
           productName={product.name}
           currentStock={Number(product.stock)}
+          unit={product.unit || "pc"}
+          packagings={product.packagings || []}
         />
         <Link
           href={`/products/${id}/edit`}
@@ -139,7 +149,7 @@ export default async function ProductDetailPage({ params }: Props) {
             {product.sku && <p>SKU: <span className="font-mono font-medium">{product.sku}</span></p>}
             {product.barcode && <p>Barcode: <span className="font-mono">{product.barcode}</span></p>}
             <p className="font-medium text-gray-800">
-              Current Stock: <span className="font-bold text-gray-900">{Number(product.stock)} {product.unit}</span>
+              Current Stock: <span className="font-bold text-gray-900">{Number(product.stock)} {product.unit}{breakdown ? ` (${breakdown.formattedText})` : ""}</span>
             </p>
           </div>
         </div>
@@ -180,6 +190,11 @@ export default async function ProductDetailPage({ params }: Props) {
                 <span className="ml-2 text-xs font-normal bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded print:border print:border-amber-400">Low</span>
               )}
             </p>
+            {breakdown && (
+              <p className="text-xs text-muted-foreground print:text-gray-600">
+                {breakdown.formattedText}
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground uppercase font-medium print:text-gray-600">Sale Price</p>

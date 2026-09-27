@@ -41,8 +41,28 @@ export async function createProduct(formData: FormData) {
     imageUrl: parsed.data.imageUrl || null,
   };
 
+  const hasPackaging = raw.hasPackaging === "true" || raw.hasPackaging === "1";
+  const packagingName = String(raw.packagingName || "Box").trim();
+  const packagingConversionQty = parseFloat(String(raw.packagingConversionQty || "0"));
+  const packagingPrice = parseFloat(String(raw.packagingPrice || "0"));
+  const packagingBarcode = String(raw.packagingBarcode || "").trim() || null;
+
   try {
-    await prisma.product.create({ data });
+    await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({ data });
+      if (hasPackaging && packagingConversionQty >= 2 && !isNaN(packagingPrice) && packagingPrice >= 0) {
+        await tx.productPackaging.create({
+          data: {
+            productId: created.id,
+            name: packagingName,
+            conversionQty: packagingConversionQty,
+            price: packagingPrice,
+            barcode: packagingBarcode,
+          },
+        });
+      }
+      return created;
+    });
   } catch (e: any) {
     console.error("createProduct error:", e.code, JSON.stringify(e.meta));
     if (e.code === "P2002") {

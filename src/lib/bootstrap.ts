@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { z } from "zod";
+import * as z from "zod";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth-passwords";
 export class BootstrapError extends Error {

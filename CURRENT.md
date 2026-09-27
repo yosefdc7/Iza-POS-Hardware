@@ -1,41 +1,41 @@
 # CURRENT.md
 
 ## Objective
-Implement staff item creation and admin approval queue; verify resilience; push and deploy to GitHub / Netlify. Resolve `/products` Server Component render regression.
+Implement hardware-specific Unit of Measure (UoM) dropdown, custom unit management in Settings and inline product creation, single-pool Box-to-Piece packaging math, and dual inventory display across catalog, details, and stock adjustments. Verify resilience, push to GitHub, and deploy to Netlify.
 
 ## Status
-Resolved `/products` crash. Applied database table migration to Supabase production and hardened both `/products` and `/approvals` Server Components with try/catch fallbacks.
+All features implemented and verified. Clean TypeScript compilation (0 errors). All 26 unit test suites passed (216/216 tests). Ready for commit, push, and deployment.
 
 ## Completed
-- [x] **Staff Product Creation & Admin Approval Subsystem**:
-  - Authenticated staff (`CASHIER` role) can directly create new products with opening stock, price, SKU, barcode, and image.
-  - Edits, stock adjustments, packaging modifications, and product deletions (archiving) initiated by staff are queued as `PENDING` change requests.
-  - Administrative Approvals dashboard created at `/approvals` with approval and rejection controls (mandating rejection reason).
-  - Server-side enforcement with `requireStaff()` across product mutations and API endpoints.
-- [x] **Checkout Concurrency Hardening (`src/lib/checkout-stock.ts`)**:
-  - Deterministic sorted row-level locks (`SELECT ... FOR UPDATE`) in `sales/route.ts` preventing race conditions between checkouts and stock approval applications.
-  - Aggregated multi-item stock validation.
-- [x] **Products & Approvals Page Resilience**:
-  - Added try/catch fallback around `prisma.productChangeRequest.count` on `/products` to guarantee the page never crashes if table queries fail.
-  - Added try/catch fallback around `prisma.productChangeRequest.findMany` on `/approvals`.
-- [x] **Production Database Migration**:
-  - Applied `20260927170000_product_approvals` migration to Supabase production database, creating `ProductChangeRequest` table with RLS and indexes.
+- [x] **Hardware Units Taxonomy & Helper (`src/lib/hardware-units.ts`)**:
+  - 26 standard hardware units across Count, Length, Weight, Volume, and Bulk (`pc`, `box`, `roll`, `kg`, `m`, `sheet`, `bag`, `tin`, `drum`, etc.).
+  - Mathematical breakdown helper `computeStockBreakdown(stock, unit, packagings)` computing full boxes and loose remainder.
+  - Live packaging pricing helper `computePackagingPricing(conversionQty, basePrice, packagingPrice, packagingCost)`.
+- [x] **Units Management API & Settings (`src/app/api/units/route.ts`, `UnitsManager`)**:
+  - Dynamic API merging default hardware units, database-persisted custom units (`StoreUnit`), and existing product units.
+  - Self-healing table initialization for `StoreUnit` via raw query fallback if not already migrated.
+  - Dedicated Units management panel in `/settings` allowing custom unit creation and deletion.
+- [x] **Product Creation & Inline Packaging Math (`product-form.tsx`, `product-actions.ts`)**:
+  - Categorized unit dropdown replacing raw text input with quick `+ Add unit` inline creation modal.
+  - Integrated Box packaging toggle with live conversion math: derived piece price, derived unit cost, and bulk discount percentage.
+  - Atomic database transaction creating both `Product` and `ProductPackaging` records on submission.
+- [x] **Dual Stock Display & Box Stock Receiving (`product-table.tsx`, `products/[id]/page.tsx`, `stock-adjust-modal.tsx`, `stock-adjust-button.tsx`)**:
+  - Catalog and detail views display both base units and box conversions (e.g. `435 pc (4 boxes + 35 pc)`).
+  - Stock adjustment modal supports toggling between Base Unit and Packaging units (e.g., adding `+5 Boxes` auto-multiplies by conversion quantity to increment inventory by `+500 pcs` with clear calculation audit preview).
 - [x] **Automated Verification**:
-  - 204 unit tests passed across 25 suites (`product-approval.test.ts`, `checkout-stock.test.ts`, etc.).
-  - TypeScript compilation clean.
-  - Verified live database query against `ProductChangeRequest` succeeds.
+  - 216 unit tests passed across 26 test suites (`hardware-units.test.ts`, `product-approval.test.ts`, `deployment.test.ts`, `checkout-stock.test.ts`, etc.).
+  - TypeScript compilation clean: 0 errors (`bun x tsc --noEmit`).
 
 ## Important Decisions
-- **Staff Direct Creation**: Staff can add new inventory immediately without admin bottlenecking.
-- **Delta-Based Stock Adjustments**: Stock changes apply relative increments/decrements, safeguarding against intervening POS sales.
-- **Audit-Preserving Archival**: Deletions archive items (`active: false`) rather than physical deletion, preserving receipts and sales history.
-- **Defensive Server Component Queries**: Schema-dependent count/list queries in Server Components are wrapped in try/catch to maintain maximum page uptime.
+- **Single-Pool Base Storage**: Stock is strictly tracked in the base unit (`pc`), preventing stock desynchronization. Full boxes and loose units are mathematically derived on demand.
+- **Conversion Multiplier in Stock Adjustments**: Entering packaging count in adjustments translates directly to base unit deltas for audit fidelity.
+- **Zod Namespace Compatibility**: Adopted `import * as z from 'zod'` to ensure seamless runtime and test runner compatibility across ESM, CommonJS, and Next.js route handlers.
 
 ## Verification
-- Supabase production query: `SELECT count(*) FROM "ProductChangeRequest"` returned 0 (table created cleanly).
-- Unit test suite: **25/25 files passed, 204/204 tests passed**.
+- Unit test suite: **26/26 files passed, 216/216 tests passed**.
 - TypeScript: **Clean (0 errors)**.
 
 ## Next
-- Push branch `codex/deploy-free-evaluation` to GitHub `yosefdc7/Iza-POS-Hardware`.
-- Netlify automatic build and publication.
+- Commit changes and push branch `codex/deploy-free-evaluation` to GitHub `yosefdc7/Iza-POS-Hardware`.
+- Verify Netlify build and automated publication.
+- Smoke-test live endpoints (`/products`, `/products/new`, `/settings`, `/api/units`).

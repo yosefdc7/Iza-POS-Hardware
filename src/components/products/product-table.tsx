@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { StockAdjustModal } from "./stock-adjust-modal";
+import { computeStockBreakdown } from "@/lib/hardware-units";
 
 interface Product {
   id: string;
@@ -15,9 +16,11 @@ interface Product {
   sku: string | null;
   price: { toString(): string };
   stock: { toString(): string };
+  unit?: string;
   lowStockThreshold: { toString(): string };
   category: string | null;
   active: boolean;
+  packagings?: Array<{ id: string; name: string; conversionQty: number | { toString(): string }; price: { toString(): string } }>;
 }
 
 interface ProductTableProps {
@@ -84,6 +87,7 @@ export function ProductTable({ products, isStaff=false }: ProductTableProps) {
                 const threshold = Number(product.lowStockThreshold);
                 const isLowStock = stock <= threshold;
                 const isOutOfStock = stock === 0;
+                const breakdown = computeStockBreakdown(stock, product.unit || "pc", product.packagings);
 
                 return (
                   <tr key={product.id} className="hover:bg-muted/30 transition-colors">
@@ -122,15 +126,17 @@ export function ProductTable({ products, isStaff=false }: ProductTableProps) {
                         <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
                           {t("out_of_stock_badge")}
                         </span>
-                      ) : isLowStock ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30">
-                          <AlertTriangle className="h-3 w-3" />
-                          {stock} {t("low_stock_badge")}
-                        </span>
                       ) : (
-                        <span className="font-mono text-xs font-medium text-foreground">
-                          {stock}
-                        </span>
+                        <div>
+                          <span className={`font-mono text-xs font-semibold ${isLowStock ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+                            {stock} <span className="font-normal text-muted-foreground">{product.unit || "pc"}</span>
+                          </span>
+                          {breakdown && (
+                            <p className="text-[11px] text-muted-foreground font-medium">
+                              ({breakdown.formattedText})
+                            </p>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3.5">
@@ -175,6 +181,8 @@ export function ProductTable({ products, isStaff=false }: ProductTableProps) {
           productId={adjusting.id}
           productName={adjusting.name}
           currentStock={Number(adjusting.stock)}
+          unit={adjusting.unit || "pc"}
+          packagings={adjusting.packagings || []}
           isStaff={isStaff}
           onClose={() => setAdjusting(null)}
         />

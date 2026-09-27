@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import { PackagePlus } from "lucide-react";
-import { StockAdjustModal } from "./stock-adjust-modal";
+import { StockAdjustModal, PackagingOption } from "./stock-adjust-modal";
 
 interface Props {
   productId: string;
   productName: string;
   currentStock: number;
+  unit?: string;
+  packagings?: PackagingOption[];
   isStaff?: boolean;
 }
 
-export function StockAdjustButton({ productId, productName, currentStock, isStaff=false }: Props) {
+export function StockAdjustButton({
+  productId,
+  productName,
+  currentStock,
+  unit = "pc",
+  packagings = [],
+  isStaff = false,
+}: Props) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -27,6 +36,8 @@ export function StockAdjustButton({ productId, productName, currentStock, isStaf
           productId={productId}
           productName={productName}
           currentStock={currentStock}
+          unit={unit}
+          packagings={packagings}
           isStaff={isStaff}
           onClose={() => setOpen(false)}
         />
