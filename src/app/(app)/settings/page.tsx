@@ -10,6 +10,7 @@ import { SettingsForm } from "@/components/settings/settings-form";
 import { DeviceSettingsForm } from "@/components/settings/device-settings-form";
 import { PluginsPanel } from "@/components/settings/plugins-panel";
 import { ReceiptSeriesManager } from "@/components/settings/receipt-series-manager";
+import { DatabaseDiagnosticsCard } from "@/components/settings/database-diagnostics-card";
 import { DbError } from "@/components/ui/db-error";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,8 @@ export default async function SettingsPage() {
       <DeviceSettingsForm />
       <hr />
       <ReceiptSeriesManager />
+      <hr />
+      <DatabaseDiagnosticsCard />
       <hr />
       <PluginsPanel />
     </div>
