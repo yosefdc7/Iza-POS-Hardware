@@ -18,7 +18,7 @@ export default async function ApprovalsPage({searchParams}:{searchParams:Promise
  {!requests.length&&<p>No requests yet.</p>}
  {requests.map(r=>{
   const changes=r.changes as Record<string,unknown>;const original=r.original as Record<string,unknown>;
-  const current:Record<string,unknown>=r.operation.startsWith('PACK_')?(r.product.packagings.find(p=>p.id===changes.packagingId)||{}):r.product;
+  const current:Record<string,unknown>=r.operation.startsWith('PACK_')?(r.product.packagings.find((p:{id:string})=>p.id===changes.packagingId)||{}):r.product;
   const fields=r.operation==='PACK_DELETE'?['name','conversionQty','price','barcode']:Object.keys(changes).filter(k=>k!=='packagingId');
   return <section key={r.id} className="border rounded-lg p-4 space-y-2" data-request-id={r.id}><div className="flex justify-between gap-3"><h2 className="font-semibold">{labels[r.operation]} — <Link className="underline" href={`/products/${r.productId}`}>{r.product.name}</Link></h2><strong>{r.status}</strong></div>
    <p>Requested by {r.requesterName} · {r.createdAt.toLocaleString('en-PH',{timeZone:'Asia/Manila'})}</p><p>Reason: {r.reason}</p>
