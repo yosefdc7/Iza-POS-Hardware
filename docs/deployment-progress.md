@@ -15,3 +15,4 @@
 - Final hosted acceptance checks and production publication remain in progress.
 - Keep all credentials and the bootstrap capability in ignored/private files; never commit the setup URL token.
 - Local Netlify adapter failed on a Windows CJS/webpack path in middleware. Switching to a Git-backed Netlify Linux build. No production deployment has occurred.
+- Cloud deployment initially uploaded Next output as static files because API repository linking did not auto-enable the runtime. Added explicit @netlify/plugin-nextjs configuration; no app data was touched.
