@@ -11,7 +11,7 @@ export class CheckoutEngine implements CheckoutPort {
   ) {}
 
   async execute(intent: CheckoutIntent): Promise<CheckoutResult> {
-    const isExplicitlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
+    const isExplicitlyOffline = typeof navigator !== "undefined" && navigator.onLine === false;
 
     if (isExplicitlyOffline) {
       return this.offlinePort.execute(intent);
@@ -22,7 +22,7 @@ export class CheckoutEngine implements CheckoutPort {
     } catch (error) {
       const isNetworkError =
         error instanceof TypeError ||
-        (typeof navigator !== "undefined" && !navigator.onLine) ||
+        (typeof navigator !== "undefined" && navigator.onLine === false) ||
         (error instanceof Error &&
           (error.message.toLowerCase().includes("fetch failed") ||
             error.message.toLowerCase().includes("networkerror") ||
