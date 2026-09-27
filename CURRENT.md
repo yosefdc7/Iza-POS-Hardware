@@ -1,80 +1,66 @@
 # CURRENT.md
 
 ## Objective
-Implement product classification tagging (`CHB` or `211` or custom), CSV exports across Products, Sales, and Reports, and Staff Financial Redaction (non-admin staff can only see item numbers and stock quantities, not monetary amounts in sales and reports). Verify across all automated tests and type checking, commit, push to GitHub, and deploy to Netlify.
+Deepen browser-based offline capabilities (Architecture Candidate 1: Deep Checkout Module) by collapsing offline sale queuing, strict local inventory validation, local stock decrements, and instant receipt generation behind a single deep checkout interface with ports and adapters (`OnlineCheckoutAdapter`, `OfflineCheckoutAdapter`, `MemoryStorageAdapter`).
 
 ## Status
-All features implemented, committed, pushed to GitHub (`codex/deploy-free-evaluation`), and deployed to production Netlify (`https://iza-pos-hardware-eval.netlify.app`). 0 TypeScript compiler errors. All 26 unit test suites passed (217/217 tests). Live deployment verified ready.
+Candidate 1 implemented, tested, and verified clean. 0 TypeScript compiler errors (`bun x tsc --noEmit`). All 27 unit test suites passed (226/226 tests). Production Next.js build verified successful (`bun run build` with all 27 static routes generated).
 
 ## Completed
-- [x] **Product Tagging (`CHB` / `211` / Custom)**:
-  - Database schema updated with `tag String?` on `Product` with index `Product_tag_idx`. Applied cleanly to live Supabase database via migration `20260927190000_add_product_tag`.
-  - Added `tag` validation to `productFormSchema` and persisted in `createProduct` / `updateProduct` server actions.
-  - Added Tag dropdown (`None`, `CHB`, `211`, custom) with inline `+ Custom Tag...` creation modal in `product-form.tsx`.
-  - Tag pill badges rendered across Catalog table (`product-table.tsx`), Product Details (`products/[id]/page.tsx`), and POS search & quick-add grid (`product-search.tsx`).
-  - Added Tag filter pills (`All`, `CHB`, `211`, custom tags) to Catalog Table.
-- [x] **Role-Aware CSV Exports**:
-  - **Products CSV Export (`/api/products/export`)**: Supports tag filtering (`ALL`, `CHB`, `211`, `UNTAGGED`). Admins receive full selling prices, costs, and margins; staff downloads omit all financial numbers and only include IDs, names, tags, categories, SKUs, barcodes, units, stock, threshold, and status.
-  - **Sales CSV Export (`/api/sales/export`)**: Admins receive subtotal, discount, tax, total, and item summary; non-admin staff downloads omit subtotal, discount, tax, and total, and instead receive Items Count, Total Quantity, and item breakdown.
-  - **Reports Daily Ledger CSV Export (`/api/reports/daily-ledger?format=csv`)**: Admins receive Base Price, Selling Price, Unit Cost, Gross Profit, Selling Value, Sale Total, and Refund Total; non-admin staff receive only Business Date, Customer, Receipt #, DR/SI No., Qty, Unit, Item, Cashier, and Status.
-- [x] **Staff Financial Redaction in UI & API Payloads**:
-  - **Sales Table (`/sales`, `sales-table.tsx`)**: Passing `isStaff` prop based on `user.role !== 'ADMIN'`. When `isStaff` is true:
-    - Table header `Total` is replaced with `Items / Qty`.
-    - Main row total cell displays e.g. `3 items (15 qty)` instead of ₱ amount.
-    - Expanded receipt rows hide `Price` and `Total` columns, showing only item name and quantity.
-    - Refund button is hidden for non-admin staff (backend already restricts refunds to `ADMIN`).
-  - **Reports Daily Ledger (`/reports`, `daily-sales-ledger.tsx`)**:
-    - When `isAdmin` is false, hide financial metric cards (Gross Revenue, Gross Profit, Series Totals, Base/Selling Values, Refunds) and replace with operational metrics (`Receipts in view`, `Total Items Sold`, `Total Receipts`).
-    - Ledger table hides `Base Price`, `Selling Price`, `Unit Cost`, `Profit`, and `Selling Value` columns for staff.
-    - Ledger footer hides `Refunds` and `Sale Total`, displaying total item count and units.
-    - Daily Ledger API (`/api/reports/daily-ledger`) zeroes out revenue, refund, selling values, prices, and profit numbers in the JSON response when accessed by non-admin staff.
+- [x] **Domain Modeling & Decision Grilling (`CONTEXT.md`)**:
+  - Sharpened domain vocabulary with `Offline Receipt` and `Local Stock Allocation`.
+  - Aligned on offline receipt reference format: `[Series]-OFF-[Sequence]` (e.g. `211-OFF-000001`).
+  - Aligned on strict local stock validation: checkout is blocked with an informative message if requested quantity (including packaging conversion factors) exceeds local inventory cache.
+- [x] **Local Storage Seam & IndexedDB Helper Methods (`src/lib/pglite.ts`)**:
+  - Extended `ProductCacheItem` to retain `tag`, `lowStockThreshold`, and `packagings`.
+  - Added `getProductFromCache(id)` to retrieve cached products for checkout validation.
+  - Added `decrementProductStockInCache(productId, quantityToDeduct)` to perform atomic local stock deductions.
+  - Added `allocateOfflineReceiptNumber(seriesName)` to manage sequential, monotonically incrementing offline receipt numbers isolated by series.
+- [x] **Deep Checkout Module (`src/lib/checkout/`)**:
+  - `types.ts`: Defined `CheckoutIntent`, `CheckoutResult`, `CheckoutPort`, and `CheckoutStoragePort` interfaces.
+  - `storage-adapters.ts`: Created `IndexedDBStorageAdapter` for native browser IndexedDB/localStorage, and `MemoryStorageAdapter` for fast test runs.
+  - `offline-adapter.ts` (`OfflineCheckoutAdapter`): Enforces strict stock validation against local cache, decrements inventory, issues `[Series]-OFF-[Sequence]` receipts, compiles full `ReceiptData`, fires `pos:stock-changed` with low/out-of-stock alerts, and persists idempotent requests to `/api/sales` in `sync_queue`.
+  - `online-adapter.ts` (`OnlineCheckoutAdapter`): Dispatches HTTP POST to `/api/sales` with session tokens, maps server response to `ReceiptData`, and returns authoritative server receipt reference.
+  - `checkout-engine.ts` (`CheckoutEngine`): Deep coordinator that handles offline pre-detection and transparent fallback from online network errors (`TypeError`, `fetch failed`) to offline adapter, while re-throwing authentic server validation errors.
+  - `index.ts`: Exports singleton `checkoutEngine` and all ports/adapters.
+- [x] **Sync Queue Header Hardening (`src/lib/sync.ts`)**:
+  - Attached `Authorization: Bearer <token>` and `x-session-token` to replayed requests during offline queue reconciliation.
+- [x] **POS Register UI Refactoring (`payment-panel.tsx` & `pos-screen.tsx`)**:
+  - Collapsed ~100 lines of manual HTTP/IndexedDB branching in `payment-panel.tsx` into a single `checkoutEngine.execute(...)` call.
+  - Updated `PaymentPanelProps.onSaleComplete` and `pos-screen.tsx` to handle both online and offline completions seamlessly, opening `ReceiptModal` immediately so customers receive a printed ticket even while disconnected.
 - [x] **Automated Verification**:
-  - Unit test suite: **26/26 files passed, 217/217 tests passed**.
-  - TypeScript compilation: **Clean (0 errors)** verified via `tsc --noEmit`.
-- [x] **Production Deployment**:
-  - Pushed commit `946f768` to GitHub `yosefdc7/Iza-POS-Hardware` on branch `codex/deploy-free-evaluation`.
-  - Netlify build `6ab9254c33f3d00009df6e58` finished successfully (`state: ready`).
-  - Live smoke test of `/api/products/search`, `/api/products/export`, and `/api/sales/export` verified functional.
+  - Created `src/tests/checkout-module.test.ts` (9/9 tests passed).
+  - All 27 unit test suites passed (226/226 tests passed via `bun x vitest run src/tests/`).
+  - TypeScript type check verified clean (`bun x tsc --noEmit`: 0 errors).
+  - Production build verified clean (`bun run build`: 27/27 static pages generated).
 
 ## Important Decisions
-- **Strict Masking at API Layer**: Rather than merely hiding numbers in UI CSS, backend API endpoints (`/api/reports/daily-ledger`, `/api/sales/export`, `/api/products/export`) omit or zero out monetary values before transmission to non-admin clients, preventing devtools network inspection leakage.
-- **POS Register Checkout Unaffected**: Cashiers at the active POS checkout register still see line totals, change, and bill calculation so they can transact with customers.
-- **Tag Search in POS**: POS product search includes `{ tag: { contains: q, mode: 'insensitive' } }`, allowing cashiers to quickly find all `CHB` or `211` materials simply by searching the tag name.
+- **Unified Receipt Experience**: Offline sales trigger the same `ReceiptModal` and issue customer receipts immediately using `[Series]-OFF-[Sequence]` numbering instead of displaying an opaque toast with no receipt.
+- **Strict Stock Allocation**: Offline checkouts validate local inventory before deducting, preventing cashiers from overselling out-of-stock items while disconnected.
+- **Two Real Adapters Behind One Seam**: The checkout seam is backed by real browser IndexedDB and in-memory test adapters, ensuring tests execute without DOM mocks or network dependencies.
 
 ## Changed Files
 | File | Status | Description |
 |---|---|---|
-| `prisma/schema.prisma` | MODIFIED | Added `tag` column and `@@index([tag])` to `Product` model |
-| `prisma/migrations/20260927190000_add_product_tag/` | CREATED | SQL migration for product tag column and index |
-| `scripts/apply-tag-column.mjs` | CREATED | Script applied to live Supabase DB for tag column |
-| `src/lib/validations/product.ts` | MODIFIED | Added `tag` string validation schema |
-| `src/app/actions/product-actions.ts` | MODIFIED | Persisting `tag` on product create & edit |
-| `src/components/products/product-form.tsx` | MODIFIED | Added Tag dropdown with CHB, 211, custom tags, and inline tag creation |
-| `src/app/(app)/products/[id]/page.tsx` | MODIFIED | Display product tag badge in product details |
-| `src/components/products/product-table.tsx` | MODIFIED | Tag filtering pills, tag badges, and export button |
-| `src/components/products/product-export-button.tsx` | CREATED | Export to CSV button for Products |
-| `src/app/api/products/export/route.ts` | CREATED | Role-aware Products CSV export endpoint |
-| `src/app/(app)/sales/page.tsx` | MODIFIED | Pass `isStaff` prop to SalesTable |
-| `src/components/sales/sales-table.tsx` | MODIFIED | Staff amount redaction (Items/Qty, receipt prices hidden, refund hidden) |
-| `src/app/api/sales/export/route.ts` | MODIFIED | Redact financial columns from Sales CSV for staff |
-| `src/lib/daily-ledger.ts` | MODIFIED | Redact financial totals and columns in CSV for non-admin |
-| `src/app/api/reports/daily-ledger/route.ts` | MODIFIED | Redact price/revenue/total values in JSON payload for staff |
-| `src/components/reports/daily-sales-ledger.tsx` | MODIFIED | Operational cards and hidden price columns in ledger for staff |
-| `src/components/pos/product-search.tsx` | MODIFIED | Display tag pill on POS cards and search results |
-| `src/app/api/products/search/route.ts` | MODIFIED | Return tag and support searching by tag in POS |
-| `src/tests/daily-ledger.test.ts` | MODIFIED | Updated protected field tests for staff |
-| `src/tests/daily-ledger-pricing.test.ts` | MODIFIED | Added test asserting staff financial redaction in totals & CSV |
-| `CURRENT.md` | MODIFIED | Updated status, decisions, changed files, and next steps |
+| `CONTEXT.md` | MODIFIED | Added Offline Receipt and Local Stock Allocation definitions |
+| `src/lib/pglite.ts` | MODIFIED | Added `getProductFromCache`, `decrementProductStockInCache`, and `allocateOfflineReceiptNumber` |
+| `src/lib/checkout/types.ts` | CREATED | Types and port interfaces for Checkout Module |
+| `src/lib/checkout/storage-adapters.ts` | CREATED | IndexedDB and Memory storage adapters implementing `CheckoutStoragePort` |
+| `src/lib/checkout/offline-adapter.ts` | CREATED | Offline adapter with strict validation, stock deduction, and receipt generation |
+| `src/lib/checkout/online-adapter.ts` | CREATED | Online adapter for server sale submission |
+| `src/lib/checkout/checkout-engine.ts` | CREATED | Deep coordinator with seamless network error fallback |
+| `src/lib/checkout/index.ts` | CREATED | Main export for checkout module and singleton engine |
+| `src/lib/sync.ts` | MODIFIED | Included auth headers from session token during offline queue replay |
+| `src/components/pos/payment-panel.tsx` | MODIFIED | Replaced shallow branching with single checkoutEngine.execute call |
+| `src/components/pos/pos-screen.tsx` | MODIFIED | Updated handleSaleComplete to handle offline receipts with immediate modal |
+| `src/tests/checkout-module.test.ts` | CREATED | Unit tests covering online, offline, stock limits, box units, and fallback |
+| `CURRENT.md` | MODIFIED | Updated status, decisions, changed files, and verification |
 
 ## Verification
-- `bun test src/tests/daily-ledger.test.ts src/tests/daily-ledger-pricing.test.ts`: **15/15 tests passed**
-- `bun x vitest run src/tests/`: **26/26 files passed, 217/217 tests passed**
-- `tsc --noEmit`: **PASSED (0 errors)**
-- Netlify Production Deploy: **Ready (Deploy ID: `6ab9254c33f3d00009df6e58`)**
-- Live Smoke Test: **Verified**
+- `bun x vitest run src/tests/checkout-module.test.ts`: **9/9 tests passed**
+- `bun x vitest run src/tests/`: **27/27 test files passed, 226/226 tests passed**
+- `bun x tsc --noEmit`: **PASSED (0 errors)**
+- `bun run build`: **PASSED — Compiled successfully, 27/27 static pages generated**
 
 ## Next
-- Deliver summary to user and stand by for further requirements.
-
-## Blockers / Unknowns
-- None. System is fully operational, verified, and deployed.
+- Commit changes and deploy to GitHub / Netlify.

@@ -152,7 +152,7 @@ export function POSScreen() {
     );
   }
 
-  function handleSaleComplete(saleId: string, receiptReference: string) {
+  function handleSaleComplete(saleId: string, receiptReference: string, isOffline?: boolean) {
     const data: ReceiptData = {
       saleId,
       receiptReference,
@@ -176,6 +176,12 @@ export function POSScreen() {
       createdAt: new Date(),
     };
     setReceiptData(data);
+
+    if (isOffline) {
+      toast.info(`Offline receipt ${receiptReference} generated. Queued for auto-sync.`, {
+        duration: 5000,
+      });
+    }
 
     // Notify application that stock levels changed
     if (typeof window !== "undefined") {

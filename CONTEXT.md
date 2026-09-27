@@ -19,3 +19,15 @@ The final per-unit price charged to the customer on a transaction item (`SaleIte
 ### Delivery Receipt / Sales Invoice (DR / SI No.)
 An optional manual physical booklet reference identifier (`Sale.drSiNumber`) entered at checkout by the cashier.
 - Enables reconciliation between paper DR/SI booklets and digital POS sales records.
+
+### Offline Receipt
+A provisional receipt generated and printable at the register while disconnected from the server.
+- Bears the chosen Receipt Series prefix and an offline discriminator tag (e.g. `211-OFF-000042`).
+- Guaranteed to issue immediately so customers receive a tangible slip even during network outages.
+- Reconciles to an authoritative server `Sale` record when connectivity returns.
+
+### Local Stock Allocation
+An immediate decrement applied to the client-side cached inventory during an offline sale.
+- Prevents cashiers from inadvertently selling non-existent physical inventory during prolonged offline operations.
+- Triggers low-stock and out-of-stock register warnings immediately without waiting for server sync.
+

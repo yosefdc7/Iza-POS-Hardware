@@ -50,9 +50,15 @@ export function replayOfflineQueue(): Promise<void> {
     for (const item of pending) {
       if (item.ownerUserId && item.ownerUserId !== localStorage.getItem("izah_user_id")) { blocked = true; continue; }
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("izah_session_token") : null;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["x-session-token"] = token;
+        }
         const res = await fetch(item.endpoint, {
           method: item.method,
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(item.payload),
         });
 

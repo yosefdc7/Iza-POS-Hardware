@@ -18,7 +18,7 @@ interface SyncQueueItem {
   createdAt: number;
 }
 
-interface ProductCacheItem {
+export interface ProductCacheItem {
   id: string;
   name: string;
   sku?: string | null;
@@ -28,6 +28,15 @@ interface ProductCacheItem {
   unit: string;
   quantityPrecision: number;
   category?: string | null;
+  tag?: string | null;
+  lowStockThreshold?: number;
+  packagings?: Array<{
+    id: string;
+    name: string;
+    conversionQty: number;
+    price: number;
+    barcode?: string | null;
+  }>;
   updatedAt: number;
 }
 
@@ -141,6 +150,15 @@ export async function upsertProductCache(product: {
   unit: string;
   quantityPrecision: number;
   category?: string | null;
+  tag?: string | null;
+  lowStockThreshold?: number;
+  packagings?: Array<{
+    id: string;
+    name: string;
+    conversionQty: number;
+    price: number;
+    barcode?: string | null;
+  }>;
 }): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -205,3 +223,67 @@ export async function searchProductsOffline(query: string): Promise<
     req.onerror = () => reject(req.error);
   });
 }
+
+/** Retrieve a single product from the local cache. */
+export async function getProductFromCache(id: string): Promise<ProductCacheItem | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("products_cache", "readonly");
+    const store = tx.objectStore("products_cache");
+    const req = store.get(id);
+    req.onsuccess = () => resolve((req.result as ProductCacheItem) || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Decrement local stock for a product in cache. Returns updated stock & metadata, or null if not cached. */
+export async function decrementProductStockInCache(
+  productId: string,
+  quantityToDeduct: number
+): Promise<{ updatedStock: number; name: string; unit: string; lowStockThreshold: number } | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("products_cache", "readwrite");
+    const store = tx.objectStore("products_cache");
+    const req = store.get(productId);
+
+    req.onsuccess = () => {
+      const item = req.result as ProductCacheItem | undefined;
+      if (!item) {
+        resolve(null);
+        return;
+      }
+      const current = typeof item.stock === "number" ? item.stock : parseFloat(String(item.stock)) || 0;
+      const updatedStock = Math.max(0, current - quantityToDeduct);
+      item.stock = updatedStock;
+      item.updatedAt = Date.now();
+      const putReq = store.put(item);
+      putReq.onsuccess = () => {
+        resolve({
+          updatedStock,
+          name: item.name,
+          unit: item.unit ?? "pc",
+          lowStockThreshold: typeof item.lowStockThreshold === "number" ? item.lowStockThreshold : 5,
+        });
+      };
+      putReq.onerror = () => reject(putReq.error);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Allocate a sequential offline receipt number for a series. */
+export function allocateOfflineReceiptNumber(seriesName = "POS"): number {
+  if (typeof window === "undefined") return 1;
+  const sanitized = seriesName.toUpperCase().replace(/[^A-Z0-9]/g, "_") || "POS";
+  const key = `izah_offline_seq_${sanitized}`;
+  try {
+    const current = parseInt(localStorage.getItem(key) || "0", 10);
+    const next = isNaN(current) ? 1 : current + 1;
+    localStorage.setItem(key, String(next));
+    return next;
+  } catch {
+    return Math.floor(Math.random() * 900000) + 100000;
+  }
+}
+

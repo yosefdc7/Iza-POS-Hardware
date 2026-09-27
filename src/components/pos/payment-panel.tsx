@@ -1,6 +1,6 @@
 "use client";
 
-import { pendingCheckout, completeCheckout } from "@/lib/browser-session";
+import { checkoutEngine } from "@/lib/checkout";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useCartStore, PaymentMethod } from "@/store/cart";
@@ -20,7 +20,7 @@ interface PaymentPanelProps {
   taxRate: number;
   onClear: () => void;
   /** Called with the new sale ID after a successful sale — triggers receipt */
-  onSaleComplete?: (saleId: string, receiptReference: string) => void;
+  onSaleComplete?: (saleId: string, receiptReference: string, isOffline?: boolean) => void;
   /** Clears the cart after an offline sale has been durably queued. */
   onOfflineSaleQueued?: () => void;
   /** Open the held‑orders modal */
@@ -200,16 +200,23 @@ export function PaymentPanel({
     const { items: cartItems, discountAmount, discountType, note } = useCartStore.getState();
 
     try {
-      const body: Record<string, unknown> = {
+      const ownerUserId = localStorage.getItem("izah_user_id");
+      if (!ownerUserId) throw new Error("Sign in again before completing a sale.");
+      const token = typeof window !== "undefined" ? localStorage.getItem("izah_session_token") : null;
+
+      const result = await checkoutEngine.execute({
         receiptSeriesId: effectiveId,
+        receiptSeriesName: targetSeries?.name,
         drSiNumber: drSiNumber.trim() || undefined,
         items: cartItems.map((i) => ({
           productId: i.productId,
           name: i.name,
           price: i.price,
           quantity: i.quantity,
+          unit: i.unit,
           notes: i.notes || undefined,
           packagingId: i.packagingId,
+          conversionQty: i.packagingQty,
         })),
         taxRate: effectiveTaxRate,
         discountAmount,
@@ -218,65 +225,22 @@ export function PaymentPanel({
         note: note || undefined,
         customerId: customerId || undefined,
         loyaltyPointsUsed: loyaltyPointsUsed || 0,
-      };
+        originatingUserId: ownerUserId,
+        sessionToken: token,
+        paymentMethod,
+        paymentLines: splitMode && paymentLines.length > 0 ? paymentLines : undefined,
+        amountTendered: paymentMethod === "CASH" ? (amountTendered || tot) : undefined,
+      });
 
-      if (splitMode && paymentLines.length > 0) {
-        body.paymentLines = paymentLines;
-      } else {
-        body.paymentMethod = paymentMethod;
-        if (paymentMethod === "CASH") body.amountTendered = amountTendered || tot;
-      }
-
-      const ownerUserId = localStorage.getItem("izah_user_id");
-      if (!ownerUserId) throw new Error("Sign in again before completing a sale.");
-      body.originatingUserId = ownerUserId;
-      body.clientRequestId = pendingCheckout(ownerUserId, body).id;
-      let res: Response;
-      const token = typeof window !== "undefined" ? localStorage.getItem("izah_session_token") : null;
-      const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) {
-        reqHeaders["Authorization"] = `Bearer ${token}`;
-        reqHeaders["x-session-token"] = token;
-      }
-      try {
-        res = await fetch("/api/sales", {
-          method: "POST",
-          headers: reqHeaders,
-          body: JSON.stringify(body),
-        });
-      } catch (networkError) {
-        const offline = typeof navigator !== "undefined" && !navigator.onLine;
-        if (!offline && !(networkError instanceof TypeError)) throw networkError;
-        const { enqueueOfflineWrite } = await import("@/lib/pglite");
-        await enqueueOfflineWrite("/api/sales", "POST", body);
-        completeCheckout(ownerUserId);
-        onOfflineSaleQueued?.();
-        setQueuedMessage("Offline — sale saved and will sync when the connection returns.");
-        return;
-      }
-
-      if (!res.ok) {
-        const resp = await res.json();
-        throw new Error(resp.error ?? "Failed to complete sale");
-      }
-
-      const resp = await res.json();
-      completeCheckout(ownerUserId);
-      const saleId: string = resp.sale?.id ?? "";
-
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("pos:stock-changed", {
-            detail: { lowStockAlerts: resp.lowStockAlerts ?? [] },
-          })
+      if (result.isOffline) {
+        setQueuedMessage(
+          result.message ||
+            "Offline sale recorded — provisional receipt issued and queued for synchronization."
         );
       }
 
       if (onSaleComplete) {
-        const selected = receiptSeries.find((series) => series.id === effectiveId);
-        const number = Number(resp.sale?.receiptNumber ?? 0);
-        const seriesPrefix = selected?.name || targetSeries?.name || "Receipt";
-        onSaleComplete(saleId, `${seriesPrefix}-${String(number).padStart(6, "0")}`);
+        onSaleComplete(result.saleId, result.receiptReference, result.isOffline);
       } else {
         onClear();
       }
