@@ -1,34 +1,37 @@
 # CURRENT.md
 
 ## Objective
-Deploy a fresh empty Iza POS evaluation store on Netlify Free and Supabase Free, verify it, and deliver working access and private setup links.
+Deploy a fresh empty Iza POS store on Netlify Free and Supabase Free and deliver verified access and private setup links.
 
 ## Status
-Implementation in progress on codex/deploy-free-evaluation. Netlify and Supabase browser setup complete; acceptance deployment packaging in progress; production not published.
+Hosted acceptance checks passed. Ready for production publication from codex/deploy-free-evaluation. No administrator created in production.
 
 ## Completed
-- New Supabase Singapore project rdjfmffuikevlsohqsgn and Netlify site iza-pos-hardware-eval (090dd7aa-c746-40bf-b403-af534571883d) provisioned.
-- Forward schema reconciliation migration, guarded one-time administrator bootstrap, removal of default-account seeding, production readiness checks, sale request idempotency, administrator mutation checks.
-- Checkout IDs now persist across reloads; queued writes track cashier ownership; account switch replaces browser credentials.
+- Netlify/Supabase browser setup, private credentials, pooled PostgreSQL connections and separate production/acceptance databases.
+- Ten migrations applied, schema reconciled, RLS enabled on all public tables, image buckets created.
+- Guarded one-time setup, no default accounts, readiness checks, administrator mutation checks, persistent checkout IDs, cashier-owned offline queue and account-switch credentials.
+- Packaged-product refunds restore base-unit stock.
+- Explicit Netlify Next.js runtime configured; Linux cloud build avoids local Windows middleware packaging failure.
 
 ## Important Decisions
-- Fresh isolated empty store; no paid upgrades. Existing Supabase projects untouched.
-- Secrets remain in ignored .env.deployment.local and private deployment tooling outside repository. Never put bootstrap token in tracked files.
-- User uses remote Codex: account handoffs must use links accessible on their device.
+- Free plans only; existing projects untouched. Final store starts empty.
+- Netlify branch acceptance uses iza_eval_test and iza-pos-test-images. Production uses postgres and iza-pos-images.
+- No credentials or setup tokens in tracked files. Secrets stay in ignored .env.deployment.local and Netlify.
+- Git pushes trigger automatic Netlify builds; do not additionally trigger duplicate builds.
 
 ## Changed Files
-See git diff and docs/deployment-progress.md. Main changes cover auth/setup, sales, browser/offline storage, schema and deployment config.
+See Git commits and docs/deployment-progress.md.
 
 ## Verification
-- All 21 unit test files / 192 tests passed before final reviewer fixes.
-- Checkout recovery and offline sync targeted tests: 15 passed after fixes.
-- Local PostgreSQL full migration chain applied; schema diff reported no difference.
-- Local HTTP integration passed setup race, login, no default account, concurrent/idempotent sale, packaging stock deduction and split payment.
-- Lint: zero errors, 142 existing warnings before final changes.
-- Production build currently running after installing missing Windows optional native dependencies. Browser test must be rerun (first run blocked by native CSS dependency).
+- Existing unit suite: 21 files / 192 tests passed.
+- Recovery and sync regression tests: 15 passed; packaged-refund route regression: passed after verified failing case.
+- TypeScript passed; lint zero errors, 143 warnings.
+- Hosted integration passed setup race, auth, concurrent/lost-response checkout retries, stock/receipt integrity, split payments, packaged refunds, cashier restrictions and image upload/read.
+- Hosted Chromium test passed login, catalog create/refresh, reports, checkout/receipt, offline sale queue and reconnect replay with exact stock check.
+- Acceptance runtime commit 85ec253; URL https://acceptance--iza-pos-hardware-eval.netlify.app; deployment 6ab8c1068b13c40008ea4168.
 
 ## Next
-Finish acceptance Netlify deployment, rebuild once with the packaged-refund fix, run hosted API and browser checks, publish the verified artifact to production, verify fresh store, deliver private setup URL. Source changed after the current preview build compiled, so this preview does not include the refund fix.
+Publish production, verify health and empty-store counts, then deliver the private bootstrap link. Update this file with the final deployment evidence.
 
 ## Blockers / Unknowns
-No remaining user account input needed. Supabase and Netlify browser sign-ins succeeded, pooler connectivity verified, storage key saved as Netlify secret, buckets created, all ten migrations applied to postgres and iza_eval_test. Production verified zero users/sales and all public tables protected by RLS. See docs/deployment-progress.md.
+No account handoff needed. Hardware printer interaction is not part of the automated browser verification.

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("deployment browser: login, catalog mutation, refresh, reports and receipt", async ({ page }) => {
+test("deployment browser: login, catalog mutation, refresh, reports and receipt", async ({ page, context }) => {
   test.setTimeout(300_000);
   await page.goto("/login?logout=1");
   await page.locator("#email").fill(process.env.E2E_ADMIN_EMAIL || "owner@example.test");
@@ -29,5 +29,16 @@ test("deployment browser: login, catalog mutation, refresh, reports and receipt"
   await expect(page.locator("#receipt-print")).toBeVisible();
   await expect(page.locator("#receipt-print")).toContainText("12.50");
   await page.screenshot({ path: "test-results/deployment-receipt.png", fullPage: true });
+  await page.keyboard.press("Escape");
+  await search.fill(name);
+  await page.getByRole("button", { name: new RegExp(name) }).first().click();
+  await context.setOffline(true);
+  await expect(page.locator('[data-sync-status="offline"]')).toBeVisible();
+  await page.getByRole("button", { name: /^Checkout/i }).click();
+  await expect(page.getByText("Offline — sale saved and will sync when the connection returns.")).toBeVisible();
+  await context.setOffline(false);
+  await expect(page.locator('[data-sync-status="synced"]')).toBeVisible({timeout:30000});
+  const products=await (await page.request.get('/api/products/search?q='+encodeURIComponent(name))).json();
+  expect(Number(products.find((p: {name:string})=>p.name===name).stock)).toBe(18);
 });
 

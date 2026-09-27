@@ -16,3 +16,4 @@
 - Keep all credentials and the bootstrap capability in ignored/private files; never commit the setup URL token.
 - Local Netlify adapter failed on a Windows CJS/webpack path in middleware. Switching to a Git-backed Netlify Linux build. No production deployment has occurred.
 - Cloud deployment initially uploaded Next output as static files because API repository linking did not auto-enable the runtime. Added explicit @netlify/plugin-nextjs configuration; no app data was touched.
+- Hosted integration and Chromium acceptance passed, including offline reconnect replay (stock exactly 18 after two sales) and packaged refund stock restoration. Acceptance deployment 6ab8c1068b13c40008ea4168, runtime commit 85ec253.
