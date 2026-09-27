@@ -4,7 +4,7 @@
 Implement product classification tagging (`CHB` or `211` or custom), CSV exports across Products, Sales, and Reports, and Staff Financial Redaction (non-admin staff can only see item numbers and stock quantities, not monetary amounts in sales and reports). Verify across all automated tests and type checking, commit, push to GitHub, and deploy to Netlify.
 
 ## Status
-All features implemented and verified. 0 TypeScript compiler errors. All 26 unit test suites passed (217/217 tests). Ready for commit, push, and deployment.
+All features implemented, committed, pushed to GitHub (`codex/deploy-free-evaluation`), and deployed to production Netlify (`https://iza-pos-hardware-eval.netlify.app`). 0 TypeScript compiler errors. All 26 unit test suites passed (217/217 tests). Live deployment verified ready.
 
 ## Completed
 - [x] **Product Tagging (`CHB` / `211` / Custom)**:
@@ -31,6 +31,10 @@ All features implemented and verified. 0 TypeScript compiler errors. All 26 unit
 - [x] **Automated Verification**:
   - Unit test suite: **26/26 files passed, 217/217 tests passed**.
   - TypeScript compilation: **Clean (0 errors)** verified via `tsc --noEmit`.
+- [x] **Production Deployment**:
+  - Pushed commit `946f768` to GitHub `yosefdc7/Iza-POS-Hardware` on branch `codex/deploy-free-evaluation`.
+  - Netlify build `6ab9254c33f3d00009df6e58` finished successfully (`state: ready`).
+  - Live smoke test of `/api/products/search`, `/api/products/export`, and `/api/sales/export` verified functional.
 
 ## Important Decisions
 - **Strict Masking at API Layer**: Rather than merely hiding numbers in UI CSS, backend API endpoints (`/api/reports/daily-ledger`, `/api/sales/export`, `/api/products/export`) omit or zero out monetary values before transmission to non-admin clients, preventing devtools network inspection leakage.
@@ -66,12 +70,11 @@ All features implemented and verified. 0 TypeScript compiler errors. All 26 unit
 - `bun test src/tests/daily-ledger.test.ts src/tests/daily-ledger-pricing.test.ts`: **15/15 tests passed**
 - `bun x vitest run src/tests/`: **26/26 files passed, 217/217 tests passed**
 - `tsc --noEmit`: **PASSED (0 errors)**
+- Netlify Production Deploy: **Ready (Deploy ID: `6ab9254c33f3d00009df6e58`)**
+- Live Smoke Test: **Verified**
 
 ## Next
-1. Git commit changes on branch `codex/deploy-free-evaluation`.
-2. Push branch `codex/deploy-free-evaluation` to GitHub `yosefdc7/Iza-POS-Hardware`.
-3. Trigger and monitor Netlify deployment via `netlify-control.mjs`.
-4. Smoke-test live endpoints (`/products`, `/sales`, `/reports`, `/pos`).
+- Deliver summary to user and stand by for further requirements.
 
 ## Blockers / Unknowns
-- None. All features implemented, verified, and ready to ship.
+- None. System is fully operational, verified, and deployed.
