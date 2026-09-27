@@ -1,76 +1,19 @@
-import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { packagingFormSchema } from "@/lib/validations/product";
-
-// PUT /api/products/[id]/packaging/[packagingId]
-export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string; packagingId: string }> }
-) {
-  const { packagingId } = await params;
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  let body: any = {};
-  try {
-    const text = await req.text();
-    body = text ? JSON.parse(text) : {};
-  } catch {
-    body = {};
-  }
-  const parsed = packagingFormSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const { name, conversionQty, price, barcode } = parsed.data;
-
-  try {
-    const updated = await db.productPackaging.update({
-      where: { id: packagingId },
-      data: { name, conversionQty, price, barcode: barcode || null },
-    });
-    return NextResponse.json(updated);
-  } catch (err: unknown) {
-    const prismaErr = err as { code?: string };
-    if (prismaErr.code === "P2002") {
-      return NextResponse.json(
-        { error: "A packaging with that barcode already exists" },
-        { status: 409 }
-      );
-    }
-    if (prismaErr.code === "P2025") {
-      return NextResponse.json({ error: "Packaging not found" }, { status: 404 });
-    }
-    throw err;
-  }
+import {NextResponse} from 'next/server';
+import {headers} from 'next/headers';
+import {auth} from '@/lib/auth';
+import {prisma} from '@/lib/db';
+import {submitProductChange} from '@/lib/product-approvals';
+type Context={params:Promise<{id:string;packagingId:string}>};
+async function change(req:Request,context:Context,operation:'PACK_EDIT'|'PACK_DELETE') {
+ const session=await auth.api.getSession({headers:await headers()});
+ if(!session) return NextResponse.json({error:'Unauthorized'},{status:401});
+ if(session.user.role!=='ADMIN') return NextResponse.json({error:'Submit packaging changes for admin approval'},{status:403});
+ try {
+  const {id,packagingId}=await context.params;
+  const changes=operation==='PACK_EDIT'?await req.json():{};
+  await submitProductChange(session.user,{productId:id,operation,reason:'Administrator packaging change',changes:{...changes,packagingId}});
+  return NextResponse.json(operation==='PACK_DELETE'?{success:true}:await prisma.productPackaging.findUnique({where:{id:packagingId}}));
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to change packaging'},{status:409});}
 }
-
-// DELETE /api/products/[id]/packaging/[packagingId]
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string; packagingId: string }> }
-) {
-  const { packagingId } = await params;
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  try {
-    await db.productPackaging.delete({ where: { id: packagingId } });
-    return NextResponse.json({ success: true });
-  } catch (err: unknown) {
-    const prismaErr = err as { code?: string };
-    if (prismaErr.code === "P2025") {
-      return NextResponse.json({ error: "Packaging not found" }, { status: 404 });
-    }
-    throw err;
-  }
-}
+export const PUT=(req:Request,context:Context)=>change(req,context,'PACK_EDIT');
+export const DELETE=(req:Request,context:Context)=>change(req,context,'PACK_DELETE');

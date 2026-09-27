@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Pencil, Trash2, AlertTriangle, PackagePlus, Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { deleteProduct } from "@/app/actions/product-actions";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { StockAdjustModal } from "./stock-adjust-modal";
 
 interface Product {
@@ -21,10 +22,23 @@ interface Product {
 
 interface ProductTableProps {
   products: Product[];
+  isStaff?: boolean;
 }
 
-export function ProductTable({ products }: ProductTableProps) {
+export function ProductTable({ products, isStaff=false }: ProductTableProps) {
   const t = useTranslations("products");
+  const router=useRouter();
+  const [busy,setBusy]=useState(false);
+  async function archive(id:string) {
+    const reason=window.prompt(isStaff?'Reason for requesting deletion:':'Reason for archiving this item:');
+    if(!reason?.trim()) return;
+    setBusy(true);
+    try {
+      const res=await fetch('/api/product-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:id,operation:'ARCHIVE',reason})});
+      const data=await res.json();if(!res.ok) throw new Error(data.error);
+      toast.success(isStaff?'Deletion submitted for admin approval':'Item archived');router.refresh();
+    }catch(e){toast.error(e instanceof Error?e.message:'Unable to archive');}finally{setBusy(false);}
+  }
   const [adjusting, setAdjusting] = useState<Product | null>(null);
 
   if (products.length === 0) {
@@ -135,15 +149,17 @@ export function ProductTable({ products }: ProductTableProps) {
                         >
                           <Pencil className="h-4 w-4" />
                         </Link>
-                        <form action={deleteProduct.bind(null, product.id)}>
+                        <div>
                           <button
                             type="submit"
                             className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            title="Delete Product"
+                            title={isStaff?"Request deletion":"Archive Product"}
+                            disabled={busy || !product.active}
+                            onClick={()=>archive(product.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
-                        </form>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -159,6 +175,7 @@ export function ProductTable({ products }: ProductTableProps) {
           productId={adjusting.id}
           productName={adjusting.name}
           currentStock={Number(adjusting.stock)}
+          isStaff={isStaff}
           onClose={() => setAdjusting(null)}
         />
       )}

@@ -27,10 +27,12 @@ interface Product {
 
 interface ProductFormProps {
   product?: Product;
+  isStaff?: boolean;
 }
 
-export function ProductForm({ product }: ProductFormProps) {
+export function ProductForm({ product, isStaff = false }: ProductFormProps) {
   const isEdit = !!product;
+  const [reason,setReason]=useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(product?.imageUrl ?? null);
 
@@ -71,6 +73,20 @@ export function ProductForm({ product }: ProductFormProps) {
     let res: { error?: any } | undefined;
 
     if (isEdit) {
+      const changes: Record<string,unknown>={},original: Record<string,unknown>={};
+      for(const [key,value] of Object.entries(values)) {
+        if(key==='stock') continue;
+        const before=(product as unknown as Record<string,unknown>)[key];
+        if(String(before ?? '')!==String(value ?? '')) {changes[key]=value;original[key]=before ?? '';}
+      }
+      if(!Object.keys(changes).length) {toast.error('No changes requested');return;}
+      if(isStaff) {
+        const response=await fetch('/api/product-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:product!.id,operation:'EDIT',reason,changes,original})});
+        const data=await response.json();
+        if(!response.ok){toast.error(data.error);return;}
+        toast.success('Submitted for admin approval');window.location.assign('/approvals');return;
+      }
+      formData.set('changes',JSON.stringify(changes));formData.set('original',JSON.stringify(original));
       res = await updateProduct(product!.id, formData);
     } else {
       res = await createProduct(formData);
@@ -155,7 +171,7 @@ export function ProductForm({ product }: ProductFormProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {field("Stock", "stock", { type: "number", min: "0", step: "any" })}
+        {field("Stock", "stock", { type: "number", min: "0", step: "any", disabled: isEdit })}
         {field("Low Stock Alert", "lowStockThreshold", { type: "number", min: "0", step: "any" })}
       </div>
 
@@ -226,13 +242,15 @@ export function ProductForm({ product }: ProductFormProps) {
         </label>
       </div>
 
+      {isEdit && <p className="text-sm text-muted-foreground">Use Adjust Stock for stock changes.</p>}
+      {isEdit && isStaff && <label className="block text-sm">Reason for change *<textarea required maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} className="block w-full border rounded p-2" /></label>}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
           disabled={isSubmitting}
           className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-10 items-center rounded-md px-6 text-sm font-medium transition-colors disabled:opacity-50"
         >
-          {isSubmitting ? "Saving…" : isEdit ? "Update Product" : "Add Product"}
+          {isSubmitting ? "Saving…" : isEdit ? (isStaff ? "Submit for approval" : "Update Product") : "Add Product"}
         </button>
       </div>
     </form>

@@ -19,6 +19,7 @@ interface StockAdjustModalProps {
   productName: string;
   currentStock: number;
   onClose: () => void;
+  isStaff?: boolean;
 }
 
 export function StockAdjustModal({
@@ -26,6 +27,7 @@ export function StockAdjustModal({
   productName,
   currentStock,
   onClose,
+  isStaff=false,
 }: StockAdjustModalProps) {
   const router = useRouter();
   const [reason, setReason] = useState<StockAdjReason>("RECEIVED");
@@ -55,6 +57,7 @@ export function StockAdjustModal({
         throw new Error(d.error ?? "Failed to save adjustment");
       }
       const d = await res.json();
+      if (d.pending) { window.alert("Stock change submitted for admin approval"); router.refresh(); onClose(); return; }
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("pos:stock-changed", {
@@ -76,7 +79,7 @@ export function StockAdjustModal({
       <div className="w-full max-w-sm rounded-xl border bg-background shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
-            <h2 className="font-semibold">Adjust Stock</h2>
+            <h2 className="font-semibold">{isStaff?"Request stock adjustment":"Adjust Stock"}</h2>
             <p className="text-xs text-muted-foreground">{productName}</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">

@@ -122,6 +122,27 @@ model Product {
   stockAdjustments StockAdjustment[]
   supplier         Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   packagings       ProductPackaging[]
+  changeRequests   ProductChangeRequest[]
+}
+
+model ProductChangeRequest {
+  id          String   @id @default(cuid())
+  productId   String
+  requesterId String
+  requesterName String
+  operation   String
+  reason      String
+  changes     Json
+  original    Json
+  status      String   @default("PENDING")
+  reviewerId  String?
+  reviewerName String?
+  reviewReason String?
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  product     Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  @@index([status, createdAt])
+  @@index([requesterId, createdAt])
 }
 
 // ============================================================

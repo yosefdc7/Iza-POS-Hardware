@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/require-staff";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
@@ -16,6 +17,7 @@ interface Props {
 
 export default async function EditProductPage({ params }: Props) {
   noStore();
+  const {user}=await requireStaff();
   const { id } = await params;
 
   let product;
@@ -36,7 +38,7 @@ export default async function EditProductPage({ params }: Props) {
         { label: "Edit" },
       ]} />
       <h1 className="text-2xl font-bold mb-6">Edit Product</h1>
-      <ProductForm product={product} />
+      <ProductForm product={product} isStaff={user.role!=="ADMIN"} />
     </div>
   );
 }

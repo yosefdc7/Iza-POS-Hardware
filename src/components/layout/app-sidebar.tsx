@@ -54,6 +54,7 @@ const cashierNavGroups: NavGroupDef[] = [
     id: "group-cashier-ops",
     items: [
       { href: "/pos", key: "pos", icon: ShoppingCart, roles: ["CASHIER", "ADMIN"] },
+      { href: "/products", key: "products", icon: Package, roles: ["CASHIER", "ADMIN"] },
       { href: "/sales", key: "sales", icon: ReceiptText, roles: ["CASHIER", "ADMIN"] },
       { href: "/customers", key: "customers", icon: Users, roles: ["CASHIER", "ADMIN"] },
     ],
@@ -206,6 +207,7 @@ export function AppSidebar({ user, onLinkClick }: AppSidebarProps) {
             </div>
           </div>
         ))}
+        <Link href={buildHref("/approvals")} onClick={onLinkClick} className="block rounded-lg px-3 py-2.5 text-sm text-white/85 hover:bg-white/10">{role==="ADMIN"?"Approvals":"My requests"}</Link>
       </nav>
 
       {/* Bottom Pinned Preferences & User Profile */}

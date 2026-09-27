@@ -8,9 +8,10 @@ interface Props {
   productId: string;
   productName: string;
   currentStock: number;
+  isStaff?: boolean;
 }
 
-export function StockAdjustButton({ productId, productName, currentStock }: Props) {
+export function StockAdjustButton({ productId, productName, currentStock, isStaff=false }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -26,6 +27,7 @@ export function StockAdjustButton({ productId, productName, currentStock }: Prop
           productId={productId}
           productName={productName}
           currentStock={currentStock}
+          isStaff={isStaff}
           onClose={() => setOpen(false)}
         />
       )}

@@ -119,49 +119,27 @@ export function PackagingSection({ productId, initialPackagings }: PackagingSect
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  async function requestChange(operation:string, changes:Record<string,unknown>, original:Record<string,unknown>={}) {
+    const reason=window.prompt('Reason for packaging change (staff changes require approval):');
+    if(!reason?.trim()) return false;
+    const res=await fetch('/api/product-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId,operation,reason,changes,original})});
+    const data=await res.json();
+    if(!res.ok){toast.error(data.error);return false;}
+    toast.success(data.request.status==='PENDING'?'Submitted for admin approval':'Packaging updated');
+    const current=await fetch(`/api/products/${productId}/packaging`);
+    if(current.ok) setPackagings(await current.json());
+    return true;
+  }
   async function handleAdd(values: PackagingFormValues) {
-    const res = await fetch(`/api/products/${productId}/packaging`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      toast.error(data.error ?? "Failed to add packaging");
-      return;
-    }
-    const created: PackagingRow = await res.json();
-    setPackagings((prev) => [...prev, created]);
-    setAdding(false);
-    toast.success("Packaging added");
+    if(await requestChange('PACK_ADD',values)) setAdding(false);
   }
-
-  async function handleEdit(id: string, values: PackagingFormValues) {
-    const res = await fetch(`/api/products/${productId}/packaging/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      toast.error(data.error ?? "Failed to update packaging");
-      return;
-    }
-    const updated: PackagingRow = await res.json();
-    setPackagings((prev) => prev.map((p) => (p.id === id ? updated : p)));
-    setEditingId(null);
-    toast.success("Packaging updated");
+  async function handleEdit(id:string,values:PackagingFormValues) {
+    const before=packagings.find(p=>p.id===id)!;
+    if(await requestChange('PACK_EDIT',{...values,packagingId:id},{name:before.name,price:before.price,conversionQty:before.conversionQty,barcode:before.barcode})) setEditingId(null);
   }
-
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this packaging option?")) return;
-    const res = await fetch(`/api/products/${productId}/packaging/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error("Failed to delete packaging");
-      return;
-    }
-    setPackagings((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Packaging deleted");
+  async function handleDelete(id:string) {
+    const before=packagings.find(p=>p.id===id)!;
+    await requestChange('PACK_DELETE',{packagingId:id},{name:before.name,price:before.price,conversionQty:before.conversionQty,barcode:before.barcode});
   }
 
   return (

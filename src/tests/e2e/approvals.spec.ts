@@ -1,0 +1,44 @@
+import {test,expect} from '@playwright/test';
+import {readFileSync} from 'node:fs';
+test('staff adds one item; admin controls edits, stock and archive; checkout and refund preserve inventory',async({page,browser,baseURL})=>{
+ test.setTimeout(300_000);
+ if(!baseURL || !['127.0.0.1','acceptance--iza-pos-hardware-eval.netlify.app'].includes(new URL(baseURL).hostname)) throw new Error('Acceptance or local test host required');
+ const password=JSON.parse(readFileSync('.env.approval-test.local','utf8')).password;
+ const adminContext=await browser.newContext({baseURL});const admin=await adminContext.newPage();
+ async function login(p:typeof page,email:string) {await p.goto('/login');await p.locator('#email').fill(email);await p.locator('#password').fill(password);await p.locator('#password-submit-btn').click();await expect(p).toHaveURL(/\/pos/,{timeout:90000});}
+ await login(page,'approval-staff@example.test');await login(admin,'approval-admin@example.test');
+ const name='TEST — Sample Hardware Item';const sku=`TEST-APPROVAL-${Date.now()}`;
+ await page.goto('/products/new');await page.locator('input[name="name"]').fill(name);await page.locator('input[name="sku"]').fill(sku);await page.locator('input[name="price"]').fill('12.50');await page.locator('input[name="stock"]').fill('20');await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/products(?:\?.*)?$/,{timeout:60000});
+ const row=page.getByRole('row').filter({hasText:sku});await expect(row).toBeVisible();
+ const href=await row.locator('a[title="Edit Product"]').getAttribute('href');const id=href!.split('/')[2];
+ const product=async()=>{const r=await page.request.get('/api/products/search?q='+encodeURIComponent(sku));return (await r.json()).find((p:{id:string})=>p.id===id);};
+ await page.goto(href!);await page.locator('input[name="price"]').fill('15');await page.getByLabel('Reason for change').fill('Acceptance price update');await page.getByRole('button',{name:'Submit for approval'}).click();await expect(page).toHaveURL(/\/approvals/);
+ expect(Number((await product()).price)).toBe(12.5);
+ const pending=page.locator('section').filter({hasText:'Acceptance price update'});const requestId=await pending.getAttribute('data-request-id');
+ expect((await page.request.post(`/api/product-approvals/${requestId}`,{data:{decision:'APPROVED'}})).status()).toBe(403);
+ await admin.goto('/approvals');await admin.locator(`[data-request-id="${requestId}"]`).getByRole('button',{name:'Approve',exact:true}).click();await expect(admin.locator(`[data-request-id="${requestId}"]`)).toContainText('APPROVED');expect(Number((await product()).price)).toBe(15);
+ expect((await admin.request.post(`/api/product-approvals/${requestId}`,{data:{decision:'APPROVED'}})).status()).toBe(409);
+ const submit=async(operation:string,changes:object={},original:object={},reason='Acceptance request')=>{
+  const r=await page.request.post('/api/product-approvals',{data:{productId:id,operation,changes,original,reason}});expect(r.status(),await r.text()).toBe(202);return (await r.json()).request.id;
+ };
+ const review=async(rid:string,decision='APPROVED',reason?:string)=>admin.request.post(`/api/product-approvals/${rid}`,{data:{decision,reason}});
+ const rejected=await submit('EDIT',{price:99},{price:15},'Reject this change');expect((await review(rejected,'REJECTED','Incorrect price')).ok()).toBeTruthy();expect(Number((await product()).price)).toBe(15);
+ const cancelled=await submit('ARCHIVE',{},{} ,'Cancel this deletion');expect((await page.request.post(`/api/product-approvals/${cancelled}`,{data:{decision:'CANCELLED'}})).ok()).toBeTruthy();
+ const stale=await submit('EDIT',{price:16},{price:15},'Stale price');const newer=await submit('EDIT',{price:17},{price:15},'New price');expect((await review(newer)).ok()).toBeTruthy();expect((await review(stale)).status()).toBe(409);
+ await page.request.post(`/api/product-approvals/${stale}`,{data:{decision:'CANCELLED'}});
+ const restorePrice=await submit('EDIT',{price:12.5},{price:17},'Restore sample price');expect((await review(restorePrice)).ok()).toBeTruthy();
+ expect((await page.request.post(`/api/products/${id}/packaging`,{data:{name:'Box',price:50,conversionQty:5}})).status()).toBe(403);
+ const packaging=await submit('PACK_ADD',{name:'Box',price:50,conversionQty:5});expect((await review(packaging)).ok()).toBeTruthy();
+ const packs=await(await page.request.get(`/api/products/${id}/packaging`)).json();expect(packs).toHaveLength(1);
+ expect((await page.request.put(`/api/products/${id}/packaging/${packs[0].id}`,{data:{name:'Bypass',price:1,conversionQty:5}})).status()).toBe(403);
+ const removePack=await submit('PACK_DELETE',{packagingId:packs[0].id},{name:'Box',price:50,conversionQty:5,barcode:null});await admin.goto('/approvals');const deletion=admin.locator(`[data-request-id="${removePack}"]`);await expect(deletion).toContainText('Box');await expect(deletion).toContainText('Remove packaging');expect((await review(removePack)).ok()).toBeTruthy();
+ const stock=await submit('STOCK',{delta:3,stockReason:'RECEIVED'},{},'Receive three units');expect(Number((await product()).stock)).toBe(20);
+ await page.goto('/pos');await page.locator('input[placeholder*="Search"]').first().fill(sku);await page.getByRole('button',{name:new RegExp(name)}).first().click();const saleResponse=page.waitForResponse(r=>r.url().includes('/api/sales')&&r.request().method()==='POST');await page.getByRole('button',{name:/^Checkout/i}).click();await expect(page.locator('#receipt-print')).toBeVisible();await expect(page.locator('#receipt-print')).toContainText('12.50');await page.screenshot({path:'test-results/approval-receipt.png',fullPage:true});expect(Number((await product()).stock)).toBe(19);
+ expect((await review(stock)).ok()).toBeTruthy();expect(Number((await product()).stock)).toBe(22);
+ const invalid=await submit('STOCK',{delta:-100,stockReason:'CORRECTION'});expect((await review(invalid)).status()).toBe(409);await page.request.post(`/api/product-approvals/${invalid}`,{data:{decision:'CANCELLED'}});
+ const sold=(await (await saleResponse).json()).sale;
+ const refund=await admin.request.post(`/api/sales/${sold.id}/refund`,{data:{items:[{saleItemId:sold.items[0].id,quantity:1}],restoreStock:true,reason:'Acceptance test refund'}});expect(refund.ok(),await refund.text()).toBeTruthy();expect(Number((await product()).stock)).toBe(23);
+ const archive=await submit('ARCHIVE',{},{} ,'End acceptance test');expect((await product()).active).not.toBe(false);expect((await review(archive)).ok()).toBeTruthy();expect(await product()).toBeUndefined();
+ await admin.goto('/approvals');await admin.screenshot({path:'test-results/approval-queue.png',fullPage:true});
+ await adminContext.close();
+});

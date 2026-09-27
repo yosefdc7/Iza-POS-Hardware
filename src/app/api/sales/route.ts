@@ -1,3 +1,4 @@
+import {lockCheckoutProducts,validateCheckoutStock} from "@/lib/checkout-stock";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -127,22 +128,7 @@ export async function POST(req: NextRequest) {
           `;
       if (issued.length !== 1) throw new ReceiptSeriesUnavailableError();
 
-      const products = await tx.product.findMany({
-        where: { id: { in: items.map((item) => item.productId) } },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          unit: true,
-          quantityPrecision: true,
-          cost: true,
-          active: true,
-          stock: true,
-          packagings: {
-            select: { id: true, name: true, conversionQty: true, price: true },
-          },
-        },
-      });
+      const products = await lockCheckoutProducts(tx,items.map(item=>item.productId));
       const productMap = new Map(products.map((product) => [product.id, product] as const));
 
       // Resolve packaging for each item and validate stock
@@ -197,6 +183,8 @@ export async function POST(req: NextRequest) {
           stockDeduction,
         };
       });
+      try {validateCheckoutStock(products,normalizedItems);} catch(error) {throw new SaleInputError(error instanceof Error?error.message:'Insufficient stock');}
+
 
       let customer: { loyaltyPoints: number } | null = null;
       if (customerId) {

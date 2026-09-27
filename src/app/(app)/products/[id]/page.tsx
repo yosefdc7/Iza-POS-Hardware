@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/require-staff";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   noStore();
+  const {user}=await requireStaff();
   const { id } = await params;
 
   let product;
@@ -99,7 +101,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
       {/* Actions - hidden during print */}
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <StockAdjustButton
+        <StockAdjustButton isStaff={user.role!=="ADMIN"}
           productId={product.id}
           productName={product.name}
           currentStock={Number(product.stock)}

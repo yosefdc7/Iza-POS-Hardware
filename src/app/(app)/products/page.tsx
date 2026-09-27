@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/require-staff";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
@@ -12,6 +13,8 @@ export const metadata: Metadata = { title: "Products" };
 
 export default async function ProductsPage() {
   noStore();
+  const {user}=await requireStaff();
+  const pending=await prisma.productChangeRequest.count({where:{status:"PENDING",...(user.role==="ADMIN"?{}:{requesterId:user.id})}});
   const t = await getTranslations("products");
 
   let products;
@@ -35,7 +38,8 @@ export default async function ProductsPage() {
           + {t("add")}
         </Link>
       </div>
-      <ProductTable products={products} />
+      <Link className="inline-block underline" href="/approvals">{user.role==="ADMIN"?"Approvals":"My requests"} ({pending} pending)</Link>
+      <ProductTable products={products} isStaff={user.role!=="ADMIN"} />
     </div>
   );
 }

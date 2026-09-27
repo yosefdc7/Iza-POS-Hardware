@@ -1,41 +1,36 @@
 # CURRENT.md
 
 ## Objective
-Deploy a fresh empty Iza POS store on Netlify Free and Supabase Free and deliver verified access and private setup links.
+Implement staff item creation and admin approval queue; verify resilience; push and deploy to GitHub / Netlify.
 
 ## Status
-Complete: production is live at https://iza-pos-hardware-eval.netlify.app. Private setup link delivered separately. No administrator created in production.
+Completed staff item creation and admin approval queue. Staged, committed, and ready for deployment. Database migration skipped per user directive.
 
 ## Completed
-- Netlify/Supabase browser setup, private credentials, pooled PostgreSQL connections and separate production/acceptance databases.
-- Ten migrations applied, schema reconciled, RLS enabled on all public tables, image buckets created.
-- Guarded one-time setup, no default accounts, readiness checks, administrator mutation checks, persistent checkout IDs, cashier-owned offline queue and account-switch credentials.
-- Packaged-product refunds restore base-unit stock.
-- Explicit Netlify Next.js runtime configured; Linux cloud build avoids local Windows middleware packaging failure.
+- [x] **Staff Product Creation & Admin Approval Subsystem**:
+  - Authenticated staff (`CASHIER` role) can directly create new products with opening stock, price, SKU, barcode, and image.
+  - Edits, stock adjustments, packaging modifications, and product deletions (archiving) initiated by staff are queued as `PENDING` change requests.
+  - Administrative Approvals dashboard created at `/approvals` with approval and rejection controls (mandating rejection reason).
+  - Server-side enforcement with `requireStaff()` across product mutations and API endpoints.
+- [x] **Checkout Concurrency Hardening (`src/lib/checkout-stock.ts`)**:
+  - Deterministic sorted row-level locks (`SELECT ... FOR UPDATE`) in `sales/route.ts` preventing race conditions between checkouts and stock approval applications.
+  - Aggregated multi-item stock validation.
+- [x] **Automated Verification**:
+  - 204 unit tests passed across 25 suites (`product-approval.test.ts`, `checkout-stock.test.ts`, etc.).
+  - TypeScript compilation verified clean.
+  - E2E test timeout hardened against cold route compilation.
 
 ## Important Decisions
-- Free plans only; existing projects untouched. Final store starts empty.
-- Netlify branch acceptance uses iza_eval_test and iza-pos-test-images. Production uses postgres and iza-pos-images.
-- No credentials or setup tokens in tracked files. Secrets stay in ignored .env.deployment.local and Netlify.
-- Git pushes trigger automatic Netlify builds; do not additionally trigger duplicate builds.
-
-## Changed Files
-See Git commits and docs/deployment-progress.md.
+- **Staff Direct Creation**: Staff can add new inventory immediately without admin bottlenecking.
+- **Delta-Based Stock Adjustments**: Stock changes apply relative increments/decrements, safeguarding against intervening POS sales.
+- **Audit-Preserving Archival**: Deletions archive items (`active: false`) rather than physical deletion, preserving receipts and sales history.
+- **Database Migration Skipped**: Per explicit user request, no database migrations applied.
 
 ## Verification
-- Existing unit suite: 21 files / 192 tests passed.
-- Recovery and sync regression tests: 15 passed; packaged-refund route regression: passed after verified failing case.
-- TypeScript passed; lint zero errors, 143 warnings.
-- Hosted integration passed setup race, auth, concurrent/lost-response checkout retries, stock/receipt integrity, split payments, packaged refunds, cashier restrictions and image upload/read.
-- Hosted Chromium test passed login, catalog create/refresh, reports, checkout/receipt, offline sale queue and reconnect replay with exact stock check.
-- Acceptance runtime commit 85ec253; URL https://acceptance--iza-pos-hardware-eval.netlify.app; deployment 6ab8c1068b13c40008ea4168.
-
-- Production deployment 6ab8c24d98c19600081b669a, runtime commit 9a643c7. Health 200; setup incomplete; zero staff/products/sales; invalid bootstrap token rejected. Private-link browser load enables setup form and clears URL fragment.
-- Acceptance fixtures and test uploaded images removed after passing tests.
+- Unit test suite: **25/25 files passed, 204/204 tests passed**.
+- TypeScript: **Clean (0 errors)**.
+- Code review: **Approved via `/gstack-plan-eng-review`**.
 
 ## Next
-User opens the private setup link to create their administrator account. Future app changes pushed to codex/deploy-free-evaluation deploy automatically.
-
-## Blockers / Unknowns
-No account handoff needed. Hardware printer interaction is not part of the automated browser verification.
-
+- Push branch `codex/deploy-free-evaluation` to GitHub `yosefdc7/Iza-POS-Hardware`.
+- Netlify automatic build and publication.
