@@ -20,7 +20,7 @@ interface RefundModalProps {
   items: {
     id: string;
     name: string;
-    quantity: number;
+    quantity: number | { toString(): string };
     price: { toString(): string };
     productId?: string | null;
   }[];
@@ -31,7 +31,7 @@ export function RefundModal({ saleId, saleTotal, items, onClose }: RefundModalPr
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(items.map((i) => i.id)));
   const [qtys, setQtys] = useState<Record<string, number>>(
-    Object.fromEntries(items.map((i) => [i.id, i.quantity]))
+    Object.fromEntries(items.map((i) => [i.id, Number(i.quantity)]))
   );
   const [reason, setReason] = useState("");
   const [restoreStock, setRestoreStock] = useState(true);
@@ -44,7 +44,7 @@ export function RefundModal({ saleId, saleTotal, items, onClose }: RefundModalPr
 
   const selectedItems = items.filter((i) => selected.has(i.id));
   const refundTotal = selectedItems.reduce(
-    (sum, i) => sum + parseFloat(i.price.toString()) * (qtys[i.id] ?? i.quantity),
+    (sum, i) => sum + parseFloat(i.price.toString()) * (qtys[i.id] ?? Number(i.quantity)),
     0
   );
 
@@ -167,12 +167,12 @@ export function RefundModal({ saleId, saleTotal, items, onClose }: RefundModalPr
                     <input
                       type="number"
                       min={1}
-                      max={item.quantity}
-                      value={qtys[item.id] ?? item.quantity}
+                      max={Number(item.quantity)}
+                      value={qtys[item.id] ?? Number(item.quantity)}
                       onChange={(e) =>
                         setQtys((prev) => ({
                           ...prev,
-                          [item.id]: Math.min(item.quantity, Math.max(0.0001, parseFloat(e.target.value) || 0.0001)),
+                          [item.id]: Math.min(Number(item.quantity), Math.max(0.0001, parseFloat(e.target.value) || 0.0001)),
                         }))
                       }
                       onClick={(e) => e.stopPropagation()}
@@ -180,7 +180,7 @@ export function RefundModal({ saleId, saleTotal, items, onClose }: RefundModalPr
                       disabled={!selected.has(item.id)}
                     />
                     <span className="text-xs text-muted-foreground w-14 text-right">
-                      {formatCurrency(parseFloat(item.price.toString()) * (qtys[item.id] ?? item.quantity))}
+                      {formatCurrency(parseFloat(item.price.toString()) * (qtys[item.id] ?? Number(item.quantity)))}
                     </span>
                   </div>
                 </label>

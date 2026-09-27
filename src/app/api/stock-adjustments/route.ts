@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const delta = (parsed.data.delta ?? parsed.data.quantity)!;
 
   try {
-    const adjustment = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
         where: { id: productId },
         select: { quantityPrecision: true },

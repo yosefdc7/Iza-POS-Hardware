@@ -77,7 +77,11 @@ interface RecentSale {
 
 const PIE_COLORS = ["#0f2044", "#f5c518", "#10b981", "#3b82f6", "#8b5cf6"];
 
-export function ReportsDashboard() {
+interface ReportsDashboardProps {
+  onNavigateToReorder?: () => void;
+}
+
+export function ReportsDashboard({ onNavigateToReorder }: ReportsDashboardProps = {}) {
   const t = useTranslations("reports");
   const tp = useTranslations("products");
   const [range, setRange] = useState<Range>("today");
@@ -371,6 +375,7 @@ export function ReportsDashboard() {
       <DashboardStockWarningBanner
         items={lowStock}
         onViewLowStockTab={() => setTab("lowStock")}
+        onNavigateToReorder={onNavigateToReorder}
       />
 
       {/* Tab selector with Variant A underline tabs */}
@@ -561,6 +566,34 @@ export function ReportsDashboard() {
               </div>
             ))}
           </div>
+
+          {/* Quick Reorder Action Card (if low-stock products exist) */}
+          {lowStock.length > 0 && onNavigateToReorder && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">
+                    {lowStock.length} Product(s) Below Low-Stock Threshold
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Generate automated supplier purchase orders and export official PDF order sheets.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToReorder}
+                data-testid="dashboard-goto-reorder-btn"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Open Reorder List &amp; PDF Order Sheet</span>
+              </button>
+            </div>
+          )}
 
           {/* Charts with Crisp Borders */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

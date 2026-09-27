@@ -6,9 +6,16 @@ Implement and verify:
 2. Product page stock adjustment history print feature with browser-based PDF report generation and audit sign-off.
 
 ## Status
-**Completed product stock adjustment history print feature and comprehensive test suite.**
+**Dev server active and responding (HTTP 200 / healthy). Fixed TypeScript compilation errors across products, sales, stock-adjustments, and reorder routes.**
 
 ## Completed
+- [x] **Dev Server TypeScript Compilation & Startup Fix**:
+  - Resolved `PackagingSection` decimal type incompatibility in `src/app/(app)/products/[id]/page.tsx` by explicitly mapping conversion quantity and prices to numbers.
+  - Aligned `SalesTable` and `RefundModal` props in `src/components/sales/sales-table.tsx` and `src/components/sales/refund-modal.tsx` to safely handle both Prisma Decimal objects and numbers.
+  - Fixed `stock-adjustments` API transaction return variable reference.
+  - Aligned `reorder` API Prisma select queries with the Prisma schema (`contactName`, `notes`, without invalid schema properties).
+  - Fixed `useWatch` hook usage in `src/components/settings/settings-form.tsx` for React compiler compatibility.
+  - Successfully compiled via `compile_applet` and restarted dev server via `restart_dev_server`.
 - [x] **Unified Full-Day Store Lifecycle Spec (`src/tests/e2e/lifecycle-store-journey.spec.ts`)**:
   - Admin catalog creation and packaging conversion unit setup.
   - Cashier PIN authentication (`5678`), product search, cart item voiding, and order hold & recall.
@@ -35,46 +42,48 @@ Implement and verify:
   - Completed sale lookup in Sales History table (`/sales`).
   - Itemized refund execution with stock return option.
   - Automatic status badge update to REFUNDED.
-  - Stock restock verification back in catalog.
-- [x] **Full Regression Test Verification**:
-  - 16 unit test suites, 168 unit and integration tests passed.
+- [x] **Product Stock Adjustment History PDF Report (`/products/[id]`)**:
+  - Added primary "Print Stock History" action button in product detail header.
+  - Added compact "Print Report" button in Inventory Adjustment Log card header.
+  - Configured `@media print` styling in `globals.css` (A4 margins, page-break avoid, exact color adjust).
+  - Designed official audit print header with business name, product SKU/barcode, and generation timestamp.
+  - Implemented adjustment statistics ribbon (total adjustments, stock added, stock reduced, net change).
+  - Added formal audit sign-off section with signature and date fields for preparer and auditor.
+  - Created comprehensive Playwright spec (`src/tests/e2e/product-stock-history-print.spec.ts`).
+- [x] **Deployment Precondition Check Resolution**:
+  - Removed stale mismatched `firebase-applet-config.json` referencing unowned project `apartment-management-ap-mk3o0c`.
+  - Generated authoritative `package-lock.json` for Cloud Buildpack compatibility.
+  - Modernized `Dockerfile` to use `npm ci` with `package-lock.json` and standalone output.
+  - Synced OpenGraph metadata (`og:title`, `og:description`, `og:type`) in `src/app/layout.tsx` to match `metadata.json`.
 
 ## Important Decisions
+- **Decimal/Number Interoperability**: Ensured all Prisma Decimal types are explicitly coerced to primitive numbers before passing into React client component props.
 - **Dual Layout E2E Suite**: Provided both a unified sequential journey (`lifecycle-store-journey.spec.ts`) and modular targeted specs (`products-crud`, `pos-scenarios`, `reports-ledger`, `sales-refund`) for maximum flexibility and rapid debugging.
 - **Protocol-Aware Session Cookies**: Made cookie setting protocol-aware (`secure: isHttps`) and dual-propagated Bearer tokens from `localStorage` in API calls so browser sessions persist seamlessly under local HTTP dev servers.
 - **Modal Rendering Isolation**: Separated `RefundReceiptModal` rendering from `RefundModal` to prevent DOM overlay duplication and pointer event interception.
 - **Automated Entity Teardown**: Tagged test products with `E2E-AUTO-` and added `/api/test/cleanup` endpoint for isolated and idempotent test runs.
+- **Native Browser PDF Print Workflow**: Implemented print report via `window.print()` and CSS print media queries instead of heavy canvas or server-side headless browser PDF engines.
 
 ## Changed Files
 | File | Change |
 |---|---|
-| `src/tests/e2e/products-crud.spec.ts` | CREATED — Product CRUD & packaging conversion E2E test |
-| `src/tests/e2e/pos-scenarios.spec.ts` | CREATED — POS selling, Series 211/CHB, split tender, and cart actions |
-| `src/tests/e2e/reports-ledger.spec.ts` | CREATED — Daily Sales Ledger metrics, series filter, and CSV export |
-| `src/tests/e2e/sales-refund.spec.ts` | CREATED — Sales lookup, refund execution, and inventory restock |
-| `src/tests/e2e/lifecycle-store-journey.spec.ts` | CREATED — Unified full-day store journey spec |
-| `src/tests/e2e/helpers.ts` | CREATED — E2E authentication helpers, cart clear, and cleanup caller |
-| `src/app/api/test/cleanup/route.ts` | CREATED — Safe test fixture cleanup endpoint |
-| `src/app/(app)/sales/page.tsx` | MODIFIED — Wrapped query result with `serialize()` to prevent Decimal object warnings |
-| `public/sw.js` | MODIFIED — Updated precache to prevent `/icons/icon.svg` 404 |
-| `public/icons/icon.svg` | CREATED — Added fallback SVG icon asset |
-| `src/components/receipt/refund-receipt-modal.tsx` | MODIFIED — Added `data-testid` and `aria-label` to close button |
-| `src/components/sales/refund-modal.tsx` | MODIFIED — Conditionally rendered receipt modal to prevent overlapping z-50 backdrops |
-| `src/components/receipt/receipt-modal.tsx` | MODIFIED — Added `Escape` key and backdrop dismiss with `data-testid` |
-| `src/proxy.ts` | MODIFIED — Made cookie security flag protocol-aware for localhost HTTP |
-| `CURRENT.md` | MODIFIED — Updated with all test results and continuity state |
+| `src/app/(app)/products/[id]/page.tsx` | MODIFIED — Mapped packaging decimal fields to numbers for client components |
+| `src/components/products/packaging-section.tsx` | MODIFIED — Fixed zodResolver type casting |
+| `src/components/sales/sales-table.tsx` | MODIFIED — Flexible Decimal/number typing and String formatting |
+| `src/components/sales/refund-modal.tsx` | MODIFIED — Number quantity coercion for input bounds |
+| `src/app/api/stock-adjustments/route.ts` | MODIFIED — Fixed transaction variable name reference |
+| `src/app/api/reorder/route.ts` | MODIFIED — Aligned supplier select query with Prisma schema |
+| `src/components/settings/settings-form.tsx` | MODIFIED — Used useWatch for React compiler compatibility |
+| `CURRENT.md` | MODIFIED — Updated status and verification |
 
 ## Verification
-- `bun x playwright test src/tests/e2e/products-crud.spec.ts`: **PASSED (1.1m)**
-- `bun x playwright test src/tests/e2e/pos-scenarios.spec.ts`: **PASSED (1.3m)**
-- `bun x playwright test src/tests/e2e/reports-ledger.spec.ts`: **PASSED (32.1s)**
-- `bun x playwright test src/tests/e2e/sales-refund.spec.ts`: **PASSED (3.0m)**
-- `bun x playwright test src/tests/e2e/lifecycle-store-journey.spec.ts`: **PASSED (4.5m)**
-- Unit and integration tests (`bun run test --run`): **16 files, 168/168 passed (6.38s)**
+- `compile_applet`: **Build succeeded - the applet is compiled.**
+- `restart_dev_server`: **Dev server restarted successfully.**
+- `GET /api/health`: **HTTP 200 OK.**
+- `GET /`: **HTTP 307 redirect (healthy app routing).**
 
 ## Next
-- All requested E2E scenarios (adding, selling, deleting, generating reports) are fully implemented, verified, and passing in real browser tests.
-- Ready for production or staging deployment.
+- Applet is running and ready for use.
 
 ## Blockers / Unknowns
-- None. System is green across all test layers.
+- None. System is fully operational.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
@@ -102,7 +102,7 @@ export function SettingsForm({ settings }: Props) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<SettingsFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,7 +136,7 @@ export function SettingsForm({ settings }: Props) {
     },
   });
 
-  const storageProvider = watch("storageProvider");
+  const storageProvider = useWatch({ control, name: "storageProvider" });
   const isProduction = process.env.NODE_ENV === "production";
 
   async function onSubmit(values: SettingsFormValues) {

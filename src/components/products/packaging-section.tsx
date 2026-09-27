@@ -35,7 +35,7 @@ function PackagingRowForm({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<PackagingFormValues>({
-    resolver: zodResolver(packagingFormSchema),
+    resolver: zodResolver(packagingFormSchema) as any,
     defaultValues: initial ?? { price: 0, conversionQty: 2 },
   });
 

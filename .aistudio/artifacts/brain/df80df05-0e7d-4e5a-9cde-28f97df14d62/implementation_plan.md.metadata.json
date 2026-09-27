@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan to create a PostgreSQL connection & Prisma diagnostic utility with a dedicated page in Settings, prevent startup crashes, and resolve deployment precondition check issues.",
+  "updatedAt":  "2026-09-27T00:06:32.119176675Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

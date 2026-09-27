@@ -18,12 +18,14 @@ export interface LowStockBannerItem {
 interface DashboardStockWarningBannerProps {
   items: LowStockBannerItem[];
   onViewLowStockTab?: () => void;
+  onNavigateToReorder?: () => void;
   className?: string;
 }
 
 export function DashboardStockWarningBanner({
   items,
   onViewLowStockTab,
+  onNavigateToReorder,
   className,
 }: DashboardStockWarningBannerProps) {
   const [dismissed, setDismissed] = useState(false);
@@ -139,15 +141,26 @@ export function DashboardStockWarningBanner({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
+          {onNavigateToReorder && (
+            <button
+              type="button"
+              onClick={onNavigateToReorder}
+              data-testid="banner-open-reorder-btn"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-xs font-bold shadow-2xs hover:bg-primary/90 transition-colors cursor-pointer"
+            >
+              <span>Reorder List ({totalCount})</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )}
+
           {onViewLowStockTab && (
             <button
               type="button"
               onClick={onViewLowStockTab}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs hover:bg-muted hover:border-primary/40 transition-colors cursor-pointer"
             >
-              <span>Inspect Low Stock ({totalCount})</span>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Inspect Stock</span>
             </button>
           )}
 

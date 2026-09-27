@@ -15,6 +15,11 @@ export const metadata: Metadata = {
     template: "%s | Izah POS",
   },
   description: "Open-source, offline-capable Point of Sale for small businesses",
+  openGraph: {
+    title: "Izah POS",
+    description: "Open-source, offline-capable Point of Sale for small businesses",
+    type: "website",
+  },
   manifest: "/manifest.json",
   icons: {
     icon: [

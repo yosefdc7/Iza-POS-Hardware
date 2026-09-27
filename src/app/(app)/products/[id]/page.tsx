@@ -198,7 +198,18 @@ export default async function ProductDetailPage({ params }: Props) {
 
       {/* Packaging Sizes - hidden during print */}
       <div className="print:hidden">
-        <PackagingSection productId={product.id} initialPackagings={product.packagings ?? []} />
+        <PackagingSection
+          productId={product.id}
+          initialPackagings={
+            product.packagings?.map((p) => ({
+              id: p.id,
+              name: p.name,
+              conversionQty: Number(p.conversionQty),
+              price: Number(p.price),
+              barcode: p.barcode,
+            })) ?? []
+          }
+        />
       </div>
 
       {/* Inventory Log */}

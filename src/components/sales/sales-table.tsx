@@ -9,7 +9,7 @@ import { RefundModal } from "./refund-modal";
 interface SaleItem {
   id: string;
   name: string;
-  quantity: number;
+  quantity: number | { toString(): string };
   price: { toString(): string };
   total: { toString(): string };
   notes?: string | null;
@@ -18,7 +18,7 @@ interface SaleItem {
 
 interface Sale {
   id: string;
-  createdAt: Date;
+  createdAt: Date | string;
   total: { toString(): string };
   paymentMethod: string;
   status: string;
@@ -182,7 +182,7 @@ export function SalesTable({ sales }: SalesTableProps) {
                                       </p>
                                     )}
                                   </td>
-                                  <td className="py-2 text-right font-mono">{item.quantity}</td>
+                                  <td className="py-2 text-right font-mono">{String(item.quantity)}</td>
                                   <td className="text-muted-foreground py-2 text-right font-mono">
                                     {formatCurrency(parseFloat(item.price.toString()))}
                                   </td>
