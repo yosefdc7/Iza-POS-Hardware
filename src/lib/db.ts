@@ -66,7 +66,7 @@ function createPgPool(customConnectionString?: string): Pool {
       host: process.env.SQL_HOST,
       port: process.env.SQL_PORT ? Number.parseInt(process.env.SQL_PORT, 10) : 5432,
       ssl: isProd && !isUnix ? { rejectUnauthorized: false } : undefined,
-      max: 10,
+      max: 2,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
@@ -82,7 +82,7 @@ function createPgPool(customConnectionString?: string): Pool {
     pool = new Pool({
       connectionString,
       ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
-      max: 10,
+      max: 2,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
@@ -116,6 +116,8 @@ function createPrismaClient(): PrismaClient {
       });
     }
 
+    if (process.env.NODE_ENV === "production") throw new Error("Production DATABASE_URL is required");
+
     const dbDir = path.resolve(process.cwd(), ".data/pglite");
     if (!fs.existsSync(dbDir)) {
       try {
@@ -138,18 +140,8 @@ function createPrismaClient(): PrismaClient {
     });
   } catch (e) {
     console.warn("[Database] Client initialization fallback active", e);
-    const noOp = {
-      findMany: async () => [],
-      findFirst: async () => null,
-      findUnique: async () => null,
-      create: async (d: unknown) => (d as { data?: unknown })?.data ?? {},
-      update: async (d: unknown) => (d as { data?: unknown })?.data ?? {},
-      delete: async () => ({}),
-      count: async () => 0,
-      upsert: async (d: unknown) => (d as { create?: unknown })?.create ?? {},
-      $queryRaw: async () => [],
-    };
-    return new Proxy({}, { get: () => noOp }) as unknown as PrismaClient;
+    // Defer startup errors until use so builds can import modules without a database.
+    return new Proxy({}, { get: () => { throw new Error("Database client is unavailable", { cause: e }); } }) as PrismaClient;
   }
 }
 

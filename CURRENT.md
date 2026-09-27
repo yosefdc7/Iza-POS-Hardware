@@ -1,58 +1,34 @@
 # CURRENT.md
 
 ## Objective
-Implement and verify:
-1. Database Diagnostic Utility & Deployment Precondition Fix: comprehensive PostgreSQL and Prisma Client health diagnostic suite accessible from Settings (`/settings/diagnosis`), paired with deployment hardening for Google AI Studio and Cloud Run.
-2. Product page stock adjustment history print feature and comprehensive E2E test suite.
+Deploy a fresh empty Iza POS evaluation store on Netlify Free and Supabase Free, verify it, and deliver working access and private setup links.
 
 ## Status
-**Completed Database Diagnostic Utility and Deployment Precondition Hardening. Production build verified clean.**
+Implementation in progress on codex/deploy-free-evaluation. Netlify and Supabase browser setup complete; acceptance deployment packaging in progress; production not published.
 
 ## Completed
-- [x] **Database Initialization Hardening (`src/lib/db.ts`)**:
-  - Implemented `isUnixSocketPath` safety checks so Unix domain sockets (starting with `/` or `/cloudsql/`) never enable SSL, preventing connection failures on Cloud SQL and Cloud Run.
-  - Ensured PGlite local database directory (`.data/pglite`) is created recursively before initialization.
-  - Wrapped `createPgPool()` and `createPrismaClient()` with fault-tolerant error handling and fallback proxies to prevent startup crashes.
-  - Added enhanced `runDatabaseDiagnostics()` supporting active probe, round-trip latency measurement, server version extraction, 16 core table scans, row count sampling, and sandbox connection testing with password permanent redaction.
-- [x] **Diagnostic Backend API (`src/app/api/diagnostics/database/route.ts`)**:
-  - Implemented `GET` route to execute live diagnostics against active database configurations.
-  - Implemented `POST` route to support sandbox connection string testing without altering live environment settings.
-  - Secured with session and `ADMIN` role authentication checks.
-- [x] **Database Diagnostics Dashboard & Card (`/settings/diagnosis` & `/settings`)**:
-  - Created `DatabaseDiagnosticsCard` on `/settings` with live connection status, engine badge, latency, and navigation to `/settings/diagnosis`.
-  - Created `DatabaseDiagnosticsView` on `/settings/diagnosis` featuring breadcrumb navigation, live action toolbar ("Run Full Diagnostic"), 4-metric ribbon (Connection Status, Round-Trip Latency, Active Engine, Tables Verified), sanitized parameters grid, schema & table health checklist (all 16 tables with role and row counts), and interactive manual sandbox connection tester.
-- [x] **Deployment Precondition Clean-Up**:
-  - Removed conflicting `bun.lock` to prevent Cloud Buildpack package manager ambiguity.
-  - Verified full production build (`bun run build`) succeeds cleanly with static and dynamic route optimization.
-- [x] **Automated Verification**:
-  - Created `src/tests/database-diagnostics.test.ts` testing socket detection, password sanitization, core table schema inventory, active diagnostic execution, and sandbox failure recovery (10/10 tests passed).
-  - TypeScript compilation verified clean (`bun x tsc --noEmit`).
+- New Supabase Singapore project rdjfmffuikevlsohqsgn and Netlify site iza-pos-hardware-eval (090dd7aa-c746-40bf-b403-af534571883d) provisioned.
+- Forward schema reconciliation migration, guarded one-time administrator bootstrap, removal of default-account seeding, production readiness checks, sale request idempotency, administrator mutation checks.
+- Checkout IDs now persist across reloads; queued writes track cashier ownership; account switch replaces browser credentials.
 
 ## Important Decisions
-- **Non-destructive Sandbox Testing**: Sandbox connection string tests use isolated temporary `Pool` instances that query version and tables then terminate without touching the application singleton pool or modifying environment variables.
-- **Permanent Password Redaction**: `sanitizeConnectionString` ensures passwords in all connection strings are replaced with `******` before reaching client components or server logs.
-- **Fail-Safe Startup Resilience**: In `src/lib/db.ts`, client initialization failures log warnings and supply resilient proxies rather than throwing fatal unhandled exceptions during module evaluation.
+- Fresh isolated empty store; no paid upgrades. Existing Supabase projects untouched.
+- Secrets remain in ignored .env.deployment.local and private deployment tooling outside repository. Never put bootstrap token in tracked files.
+- User uses remote Codex: account handoffs must use links accessible on their device.
 
 ## Changed Files
-| File | Change |
-|---|---|
-| `src/lib/db.ts` | MODIFIED — Added Unix domain socket SSL safety, recursive PGlite directory creation, and enhanced diagnostic engine |
-| `src/app/api/diagnostics/database/route.ts` | CREATED — Diagnostic API route with GET (active probe) and POST (sandbox test) |
-| `src/components/settings/database-diagnostics-card.tsx` | CREATED — Settings section card for Database & System Diagnostics |
-| `src/components/settings/database-diagnostics-view.tsx` | CREATED — Interactive diagnostics dashboard with metric ribbon, sanitized params, table checklist, and sandbox tester |
-| `src/app/(app)/settings/diagnosis/page.tsx` | CREATED — Diagnostic subpage with server-side initial data hydration |
-| `src/app/(app)/settings/page.tsx` | MODIFIED — Integrated DatabaseDiagnosticsCard into Settings page layout |
-| `src/tests/database-diagnostics.test.ts` | CREATED — Unit test suite for diagnostic utility and socket safety |
-| `bun.lock` | DELETED — Removed to prevent Cloud Buildpack package manager conflicts |
-| `CURRENT.md` | MODIFIED — Updated status, completed tasks, and verification evidence |
+See git diff and docs/deployment-progress.md. Main changes cover auth/setup, sales, browser/offline storage, schema and deployment config.
 
 ## Verification
-- `bun test src/tests/database-diagnostics.test.ts`: **10/10 tests passed (3.54s)**
-- `bun x tsc --noEmit`: **PASSED (0 errors)**
-- `bun run build`: **PASSED — Compiled successfully, static pages generated (26/26), route `/settings/diagnosis` and `/api/diagnostics/database` registered**
+- All 21 unit test files / 192 tests passed before final reviewer fixes.
+- Checkout recovery and offline sync targeted tests: 15 passed after fixes.
+- Local PostgreSQL full migration chain applied; schema diff reported no difference.
+- Local HTTP integration passed setup race, login, no default account, concurrent/idempotent sale, packaging stock deduction and split payment.
+- Lint: zero errors, 142 existing warnings before final changes.
+- Production build currently running after installing missing Windows optional native dependencies. Browser test must be rerun (first run blocked by native CSS dependency).
 
 ## Next
-- Ready for deployment to Google AI Studio or Cloud Run.
+Finish acceptance Netlify deployment, rebuild once with the packaged-refund fix, run hosted API and browser checks, publish the verified artifact to production, verify fresh store, deliver private setup URL. Source changed after the current preview build compiled, so this preview does not include the refund fix.
 
 ## Blockers / Unknowns
-- None. System is fully operational and verified.
+No remaining user account input needed. Supabase and Netlify browser sign-ins succeeded, pooler connectivity verified, storage key saved as Netlify secret, buckets created, all ten migrations applied to postgres and iza_eval_test. Production verified zero users/sales and all public tables protected by RLS. See docs/deployment-progress.md.

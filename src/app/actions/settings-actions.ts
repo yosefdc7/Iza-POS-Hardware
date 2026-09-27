@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/require-admin";
 import { prisma } from "@/lib/db";
 import { isValidTimeZone } from "@/lib/daily-ledger";
 
 export async function updateSettings(formData: FormData) {
+  await requireAdmin();
   const raw = Object.fromEntries(formData.entries());
   const taxRatePercent = parseFloat(raw.taxRate as string) || 0;
 

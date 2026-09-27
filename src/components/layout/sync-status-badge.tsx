@@ -8,6 +8,8 @@ export function SyncStatusBadge() {
   const status = useOnlineStatus();
 
   const config = {
+    blocked: { label: "Sign in as original cashier to sync", icon: WifiOff, className: "bg-yellow-100 text-yellow-800" },
+    error: { label: "Sync needs retry", icon: WifiOff, className: "bg-yellow-100 text-yellow-800" },
     offline: {
       label: "Offline",
       icon: WifiOff,

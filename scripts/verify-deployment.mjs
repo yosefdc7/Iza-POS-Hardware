@@ -1,0 +1,60 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3100';
+const dbUrl = process.env.DATABASE_URL;
+const local = dbUrl && new URL(dbUrl).hostname === '127.0.0.1' && new URL(dbUrl).pathname === '/iza_test' && new URL(base).hostname === '127.0.0.1';
+const hosted = dbUrl && new URL(dbUrl).hostname === 'aws-0-ap-southeast-1.pooler.supabase.com' && new URL(dbUrl).pathname === '/iza_eval_test' && new URL(base).hostname === 'acceptance--iza-pos-hardware-eval.netlify.app';
+if (!local && !hosted) throw new Error('Fixture runner only permits the isolated local or hosted evaluation database and test URL.');
+const client = new pg.Client({ connectionString: dbUrl, ...(hosted ? {ssl:{rejectUnauthorized:false}} : {}) });
+await client.connect();
+const request = async (path, body, token) => {
+  const response = await fetch(base + path, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  return { status: response.status, data: await response.json() };
+};
+try {
+  await client.query('TRUNCATE "User", "BusinessSettings", "ReceiptSeries", "Product", "Customer", "Supplier", "HeldOrder", "Verification" CASCADE');
+  assert.equal((await request('/api/health')).status, 200);
+  assert.equal((await request('/api/auth/staff')).data.users.length, 0);
+  assert.equal((await client.query('SELECT count(*)::int AS n FROM "User"')).rows[0].n, 0);
+  const owner = { name: 'Evaluation Owner', email: 'owner@example.test', password: 'Local-test-password-2026', businessName: 'Evaluation Store', token: process.env.SETUP_TOKEN };
+  assert.equal((await request('/api/setup/bootstrap', { ...owner, token: 'invalid' })).status, 403);
+  const setup = await Promise.all([request('/api/setup/bootstrap', owner), request('/api/setup/bootstrap', owner)]);
+  assert.deepEqual(setup.map(r => r.status).sort(), [201, 409]);
+  assert.equal((await client.query('SELECT count(*)::int AS n FROM "User" WHERE role=\'ADMIN\'')).rows[0].n, 1);
+  assert.equal((await request('/api/auth/sign-up/email', owner)).status, 403);
+  const login = await request('/api/auth/sign-in/email', owner);
+  assert.equal(login.status, 200);
+  const token = login.data.token;
+  assert.equal((await request('/api/auth/get-session', null, token)).data.user.email, owner.email);
+  assert.equal((await request('/api/sales', { items: [] })).status, 401);
+  await client.query(`INSERT INTO "Product" (id,name,price,cost,stock,"lowStockThreshold","updatedAt") VALUES ('fixture-product','Fixture product',10,5,100,5,NOW())`);
+  await client.query(`INSERT INTO "ProductPackaging" (id,"productId",name,"conversionQty",price,"updatedAt") VALUES ('fixture-pack','fixture-product','Box',5,40,NOW())`);
+  const body = { clientRequestId: randomUUID(), items: [{ productId: 'fixture-product', packagingId: 'fixture-pack', quantity: 2 }], paymentMethod: 'CASH', amountTendered: 80 };
+  const results = await Promise.all([request('/api/sales', body, token), request('/api/sales', body, token)]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200,201], JSON.stringify(results));
+  assert.equal(results[0].data.sale.id, results[1].data.sale.id);
+  assert.equal(Number((await client.query('SELECT stock FROM "Product" WHERE id=\'fixture-product\'')).rows[0].stock), 90);
+  assert.equal((await request('/api/sales', body, token)).status, 200, 'retry after lost response');
+  assert.equal((await request('/api/sales', { ...body, amountTendered: 100 }, token)).status, 409);
+  assert.equal((await client.query('SELECT count(*)::int AS n FROM "Sale"')).rows[0].n, 1);
+  assert.equal((await client.query('SELECT "nextNumber" FROM "ReceiptSeries"')).rows[0].nextNumber, 2);
+  const split = await request('/api/sales', { clientRequestId: randomUUID(), items: [{ productId: 'fixture-product', quantity: 2 }], paymentLines: [{ method: 'CASH', amount: 10 }, { method: 'CARD', amount: 10 }] }, token);
+  assert.equal(split.status, 201, JSON.stringify(split));
+  const saleId=results[0].data.sale.id;
+  const saleItem=(await client.query('SELECT id FROM "SaleItem" WHERE "saleId"=$1',[saleId])).rows[0].id;
+  const refund={items:[{saleItemId:saleItem,quantity:1}],restoreStock:true,reason:'Evaluation test'};
+  await client.query('UPDATE "User" SET role=$2 WHERE email=$1',[owner.email,'CASHIER']);
+  assert.equal((await request('/api/sales/'+saleId+'/refund',refund,token)).status,401);
+  assert.equal((await fetch(base+'/api/upload',{method:'POST',headers:{Authorization:'Bearer '+token},body:new FormData()})).status,401);
+  await client.query('UPDATE "User" SET role=$2 WHERE email=$1',[owner.email,'ADMIN']);
+  assert.equal((await request('/api/sales/'+saleId+'/refund',refund,token)).status,200);
+  assert.equal(Number((await client.query('SELECT stock FROM "Product" WHERE id=$1',['fixture-product'])).rows[0].stock),93);
+  assert.equal((await request('/api/sales',{...body,clientRequestId:randomUUID(),originatingUserId:'wrong-cashier'},token)).status,409);
+  if(hosted){const form=new FormData();form.append('file',new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6V1cAAAAASUVORK5CYII=','base64')],{type:'image/png'}),'test.png');const upload=await fetch(base+'/api/upload',{method:'POST',headers:{Authorization:'Bearer '+token},body:form});assert.equal(upload.status,201);const image=await upload.json();assert.equal((await fetch(image.url)).status,200);}
+  assert.equal((await request('/api/health')).status,200);
+  assert.equal((await request('/api/auth/sign-out', {}, token)).status, 200);
+  assert.equal((await request('/api/auth/get-session', null, token)).data, null);
+  console.log('PASS: fresh readiness, no default admin, protected/concurrent bootstrap, login/logout, signup disabled, packaging, split payments, concurrent/lost-response retries, stock and receipt integrity.');
+} finally { await client.end(); }
+

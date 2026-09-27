@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { AuthUser, Session, SessionResult } from "./auth";
+import { activateBrowserSession } from "./browser-session";
 
 export interface SignInEmailParams {
   email: string;
@@ -51,6 +52,7 @@ export const signIn = {
       }
 
       if (typeof window !== "undefined" && json.token) {
+        await activateBrowserSession(json.token, json.user.id);
         try {
           localStorage.setItem("izah_session_token", json.token);
           document.cookie = `izah_session_token=${json.token}; Path=/; Max-Age=604800; SameSite=None; Secure`;
@@ -82,8 +84,12 @@ export const signIn = {
 export async function signOut(): Promise<void> {
   try {
     if (typeof window !== "undefined") {
+      if ("caches" in window) {
+        await Promise.all((await caches.keys()).filter(name => name.startsWith("izah-pos-")).map(name => caches.delete(name)));
+      }
       try {
         localStorage.removeItem("izah_session_token");
+        localStorage.removeItem("izah_user_id");
         document.cookie = "izah_session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=None; Secure";
         document.cookie = "better-auth.session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=None; Secure";
       } catch {}

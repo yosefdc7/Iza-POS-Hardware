@@ -337,12 +337,13 @@ export async function verifyAndSwitchCashierPinAction(userId: string, pin: strin
       return { error: "Incorrect PIN. Please try again." };
     }
 
-    await createPosCashierSession(user.id);
+    const newSession = await createPosCashierSession(user.id);
 
     revalidatePath("/pos");
     revalidatePath("/(app)", "layout");
     return {
       success: true,
+      token: newSession.signedToken,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     };
   } catch (err) {
@@ -352,68 +353,10 @@ export async function verifyAndSwitchCashierPinAction(userId: string, pin: strin
 }
 
 /**
- * Ensures a default Admin user and BusinessSettings exist so PIN login works out-of-the-box.
- */
-async function ensureDefaultAdminAndSettings() {
-  try {
-    const userCount = await prisma.user.count();
-    if (userCount === 0) {
-      const defaultPinHash = hashPin("1234");
-      await prisma.user.create({
-        data: {
-          name: "Admin User",
-          email: "admin@example.com",
-          role: "ADMIN",
-          pin: defaultPinHash,
-        },
-      });
-    }
-
-    const settings = await prisma.businessSettings.findFirst();
-    if (!settings) {
-      await prisma.businessSettings.create({
-        data: {
-          id: "singleton",
-          name: "Izah POS Retail",
-          setupComplete: true,
-          currency: "₱",
-          currencyDecimals: 2,
-          taxRate: 8,
-          taxName: "Tax",
-          receiptFooter: "Thank you for shopping with us!",
-        },
-      });
-    }
-
-    const series = await prisma.receiptSeries.findFirst({ where: { active: true } });
-    if (!series) {
-      const anySeries = await prisma.receiptSeries.findFirst();
-      if (anySeries) {
-        await prisma.receiptSeries.update({
-          where: { id: anySeries.id },
-          data: { active: true },
-        });
-      } else {
-        await prisma.receiptSeries.create({
-          data: {
-            name: "DEFAULT",
-            nextNumber: 1,
-            active: true,
-          },
-        });
-      }
-    }
-  } catch (err) {
-    console.error("ensureDefaultAdminAndSettings error:", err);
-  }
-}
-
-/**
  * Returns available staff members for the PIN login screen.
  */
 export async function getStaffForPinLoginAction() {
   try {
-    await ensureDefaultAdminAndSettings();
 
     const users = await prisma.user.findMany({
       select: {
@@ -452,7 +395,6 @@ export async function loginWithPinAction(pin: string, userId?: string) {
   }
 
   try {
-    await ensureDefaultAdminAndSettings();
 
     let matchedUser: { id: string; name: string; email: string; role: string } | null = null;
 

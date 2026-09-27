@@ -25,12 +25,25 @@ function makeItem(id: number, endpoint = "/api/sales") {
   return { id, endpoint, method: "POST", payload: { saleId: `s-${id}` } };
 }
 
+it("preserves another cashier's queued sale without submitting it", async () => {
+  vi.clearAllMocks();
+  localStorage.setItem("izah_user_id", "cashier-b");
+  mockGetPendingQueue.mockResolvedValueOnce([{ ...makeItem(42), ownerUserId: "cashier-a" }]);
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  await replayOfflineQueue();
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(mockMarkSynced).not.toHaveBeenCalled();
+  localStorage.clear();
+  vi.unstubAllGlobals();
+});
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("getSyncStatus", () => {
   it("returns a valid SyncStatus string", () => {
     const status = getSyncStatus();
-    expect(["idle", "syncing", "synced", "error"]).toContain(status);
+    expect(["idle", "syncing", "synced", "error", "blocked"]).toContain(status);
   });
 });
 

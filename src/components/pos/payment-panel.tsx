@@ -1,5 +1,6 @@
 "use client";
 
+import { pendingCheckout, completeCheckout } from "@/lib/browser-session";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useCartStore, PaymentMethod } from "@/store/cart";
@@ -62,6 +63,7 @@ export function PaymentPanel({
   } = useCartStore();
 
   const [loading, setLoading] = useState(false);
+
   const [holdLoading, setHoldLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
@@ -225,6 +227,10 @@ export function PaymentPanel({
         if (paymentMethod === "CASH") body.amountTendered = amountTendered || tot;
       }
 
+      const ownerUserId = localStorage.getItem("izah_user_id");
+      if (!ownerUserId) throw new Error("Sign in again before completing a sale.");
+      body.originatingUserId = ownerUserId;
+      body.clientRequestId = pendingCheckout(ownerUserId, body).id;
       let res: Response;
       const token = typeof window !== "undefined" ? localStorage.getItem("izah_session_token") : null;
       const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
@@ -243,6 +249,7 @@ export function PaymentPanel({
         if (!offline && !(networkError instanceof TypeError)) throw networkError;
         const { enqueueOfflineWrite } = await import("@/lib/pglite");
         await enqueueOfflineWrite("/api/sales", "POST", body);
+        completeCheckout(ownerUserId);
         onOfflineSaleQueued?.();
         setQueuedMessage("Offline — sale saved and will sync when the connection returns.");
         return;
@@ -254,6 +261,7 @@ export function PaymentPanel({
       }
 
       const resp = await res.json();
+      completeCheckout(ownerUserId);
       const saleId: string = resp.sale?.id ?? "";
 
       if (typeof window !== "undefined") {

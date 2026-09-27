@@ -168,6 +168,8 @@ model Customer {
 // ============================================================
 
 model Sale {
+  clientRequestId String? @unique
+  requestFingerprint String?
   id              String        @id @default(cuid())
   userId          String
   customerId      String?

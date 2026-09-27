@@ -1,0 +1,14 @@
+import EmbeddedPostgres from 'embedded-postgres';
+import { existsSync, mkdirSync } from 'node:fs';
+const dir = './.data/deploy-test-pg';
+mkdirSync('./.data', { recursive: true });
+const server = new EmbeddedPostgres({ databaseDir: dir, user: 'postgres', password: 'local-evaluation-only', port: 55439, persistent: true, postgresFlags: ['-c', 'listen_addresses=127.0.0.1'], onLog: () => {}, onError: console.error });
+if (!existsSync(`${dir}/PG_VERSION`)) await server.initialise();
+await server.start();
+const client = server.getPgClient();
+await client.connect();
+const result = await client.query("SELECT 1 FROM pg_database WHERE datname='iza_test'");
+if (!result.rowCount) await client.query("CREATE DATABASE iza_test WITH TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'");
+await client.end();
+console.log('Local PostgreSQL ready on 127.0.0.1:55439 (iza_test).');
+setInterval(() => {}, 60000);

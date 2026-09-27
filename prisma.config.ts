@@ -11,7 +11,7 @@ function getDatabaseUrl(): string | undefined {
     const db = process.env["SQL_DB_NAME"] || "cloud_sql_development_database";
     return `postgresql://${user}:${pass}@localhost/${db}?host=${host}`;
   }
-  const dbUrl = process.env["DATABASE_URL"];
+  const dbUrl = process.env["DIRECT_URL"] || process.env["DATABASE_URL"];
   if (dbUrl && !dbUrl.includes("<") && !dbUrl.includes(">")) {
     return dbUrl;
   }
@@ -25,6 +25,5 @@ export default defineConfig({
   },
   datasource: {
     url: getDatabaseUrl(),
-    ...(process.env["DIRECT_URL"] ? { directUrl: process.env["DIRECT_URL"] } : {}),
   },
 });

@@ -80,6 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         productId: string | null;
         name: string;
         quantity: number;
+        stockQuantity: number;
         price: number;
       }> = [];
       let refundAmount = 0;
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           productId: original.productId,
           name: original.name,
           quantity: requested.quantity,
+          stockQuantity: requested.quantity * Number(original.packagingQty ?? 1),
           price,
         });
       }
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           if (!item.productId) continue;
           await tx.product.update({
             where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
+            data: { stock: { increment: item.stockQuantity } },
           });
         }
       }

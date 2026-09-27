@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/require-admin";
 import { prisma } from "@/lib/db";
 import { productFormSchema } from "@/lib/validations/product";
 
@@ -20,6 +21,7 @@ function isConstraintOn(e: any, field: string): boolean {
 }
 
 export async function createProduct(formData: FormData) {
+  await requireAdmin();
   const raw = Object.fromEntries(formData.entries());
   const parsed = productFormSchema.safeParse(raw);
 
@@ -56,6 +58,7 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(id: string, formData: FormData) {
+  await requireAdmin();
   const raw = Object.fromEntries(formData.entries());
   const parsed = productFormSchema.safeParse(raw);
 
@@ -92,6 +95,7 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
+  await requireAdmin();
   await prisma.product.delete({ where: { id } });
   revalidatePath("/products");
 }

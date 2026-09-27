@@ -74,22 +74,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ al
   }
 
   if (action === "sign-up/email" || action === "signup/email" || action === "sign-up") {
-    try {
-      const body = await request.json();
-      const result = await auth.api.signUpEmail({ body });
-      const response = NextResponse.json({
-        user: result.user,
-        session: result.session,
-        token: result.token,
-      });
-      setAuthCookies(response, result.token);
-      return response;
-    } catch (err: any) {
-      return NextResponse.json(
-        { error: { message: err?.message || "Sign up failed", status: 400 } },
-        { status: 400 }
-      );
-    }
+    return NextResponse.json({ error: "Public sign-up is disabled" }, { status: 403 });
   }
 
   if (action === "sign-out" || action === "signout") {

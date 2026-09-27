@@ -28,19 +28,19 @@ export async function createPosCashierSession(userId: string): Promise<{ token: 
   // so browsers do not reject them in cross-site iframe contexts.
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: "/",
   };
 
   cookieStore.set("izah_session_token", signedToken, cookieOptions);
   cookieStore.set("better-auth.session_token", signedToken, cookieOptions);
-  cookieStore.set("__Secure-better-auth.session_token", signedToken, cookieOptions);
+  if (process.env.NODE_ENV === "production") cookieStore.set("__Secure-better-auth.session_token", signedToken, cookieOptions);
   cookieStore.set("izah-setup-complete", "1", {
     httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
     maxAge: 31536000,
     path: "/",
   });

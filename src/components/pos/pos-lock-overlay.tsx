@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { activateBrowserSession } from "@/lib/browser-session";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Lock, UserCheck, Delete, LogOut, Loader2, ArrowLeft, KeyRound } from "lucide-react";
@@ -82,6 +83,7 @@ export function PosLockOverlay({ isOpen, onUnlock }: PosLockOverlayProps) {
         }
 
         if (res.user) {
+          if (res.token) await activateBrowserSession(res.token, res.user.id);
           toast.success(t("unlocked_as", { name: res.user.name || res.user.email }));
           onUnlock(res.user);
           try {

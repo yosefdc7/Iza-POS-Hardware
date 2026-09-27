@@ -14,6 +14,10 @@ function isOriginAllowed(origin: string | null, request: NextRequest): boolean {
     return true;
   }
 
+  if (process.env.NODE_ENV === "production") {
+    return (process.env.ALLOWED_ORIGINS || "").split(",").map(value => value.trim()).includes(origin);
+  }
+
   // Check against forwarded headers from reverse proxy (Cloud Run nginx)
   const forwardedHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
   if (forwardedHost) {
@@ -131,10 +135,8 @@ export function proxy(request: NextRequest) {
   const activeToken = tokenFromQuery || headerToken || cookieToken;
   const hasSession = !!activeToken;
 
-  // Setup is removed: if user tries to access /setup, redirect to /login or /pos
-  if (pathname.startsWith("/setup") || pathname.startsWith("/api/setup")) {
-    const dest = hasSession ? (activeToken ? `/pos?session_token=${encodeURIComponent(activeToken)}` : "/pos") : "/login";
-    return NextResponse.redirect(new URL(dest, request.url));
+  if (pathname === "/setup" || pathname.startsWith("/api/setup/")) {
+    return applyCorsHeaders(NextResponse.next(), origin, isAllowedOrigin);
   }
 
   // All API routes must proceed to route handlers rather than being redirected to /login with HTML

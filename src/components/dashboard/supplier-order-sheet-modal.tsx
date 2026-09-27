@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Printer, Download, Building2, Phone, Mail, MapPin, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { SupplierOrderGroup, ReorderSummary } from "@/lib/reorder";
@@ -29,6 +29,7 @@ export function SupplierOrderSheetModal({
   targetMultiplier,
 }: SupplierOrderSheetModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [poSuffix] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,7 +55,7 @@ export function SupplierOrderSheetModal({
     minute: "2-digit",
   });
 
-  const poNumber = `PO-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const poNumber = `PO-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${poSuffix}`;
 
   const handlePrint = () => {
     // Small delay ensures print styles apply cleanly

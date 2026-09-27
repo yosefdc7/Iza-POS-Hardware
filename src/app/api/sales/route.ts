@@ -5,8 +5,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { pluginRegistry } from "@/lib/plugins";
 import { quantityFitsPrecision } from "@/lib/daily-ledger";
+import { findSaleRetry, fingerprintSale, SaleRetryConflict } from "@/lib/sale-idempotency";
 
 const saleSchema = z.object({
+  originatingUserId: z.string().optional(),
+  clientRequestId: z.string().uuid().optional(),
   items: z
     .array(
       z.object({
@@ -58,6 +61,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  if (parsed.data.originatingUserId && parsed.data.originatingUserId !== session.user.id) return NextResponse.json({ error: "Sign in as the original cashier to submit this sale" }, { status: 409 });
   const {
     items,
     receiptSeriesId,
@@ -96,7 +100,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const requestFingerprint = fingerprintSale(parsed.data);
+    let replayed = false;
     const sale = await prisma.$transaction(async (tx) => {
+      if (parsed.data.clientRequestId) {
+        const existing = await findSaleRetry(tx, parsed.data.clientRequestId, session.user.id, requestFingerprint);
+        if (existing) { replayed = true; return existing; }
+      }
       const issued = receiptSeriesId
         ? await tx.$queryRaw<Array<{ id: string; name: string; receiptNumber: number }>>`
             UPDATE "ReceiptSeries"
@@ -250,6 +260,8 @@ export async function POST(req: NextRequest) {
 
       const created = await tx.sale.create({
         data: {
+          clientRequestId: parsed.data.clientRequestId,
+          requestFingerprint: parsed.data.clientRequestId ? requestFingerprint : null,
           userId: session.user.id,
           receiptSeriesId: issued[0].id,
           receiptNumber: issued[0].receiptNumber,
@@ -337,6 +349,8 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
+    if (replayed) return NextResponse.json({ sale, lowStockAlerts: [] }, { status: 200 });
+
     pluginRegistry
       .fire("onSaleComplete", {
         saleId: sale.id,
@@ -398,6 +412,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sale, lowStockAlerts }, { status: 201 });
   } catch (error) {
+    if (error instanceof SaleRetryConflict) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof SaleInputError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

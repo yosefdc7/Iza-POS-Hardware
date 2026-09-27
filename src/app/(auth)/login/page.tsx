@@ -1,5 +1,6 @@
 "use client";
 
+import { activateBrowserSession } from "@/lib/browser-session";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
@@ -28,7 +29,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Mode: "pin" or "password"
-  const [authMode, setAuthMode] = useState<"pin" | "password">("pin");
+  const [authMode, setAuthMode] = useState<"pin" | "password">("password");
 
   // PIN state
   const [pin, setPin] = useState("");
@@ -49,6 +50,8 @@ export default function LoginPage() {
   // Auto-restore session from localStorage if already logged in
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // A different account must never inherit cached protected pages.
+    if ("caches" in window) void caches.keys().then(names => Promise.all(names.filter(name => name.startsWith("izah-pos-")).map(name => caches.delete(name))));
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.has("logout") || searchParams.has("force")) {
       try {
@@ -167,7 +170,7 @@ export default function LoginPage() {
         if (authSuccess) {
           if (token) {
             try {
-              localStorage.setItem("izah_session_token", token);
+              await activateBrowserSession(token, selectedStaff?.id || "");
               const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
               const cookieFlags = isHttps
                 ? "; Path=/; Max-Age=604800; SameSite=None; Secure"
@@ -287,7 +290,7 @@ export default function LoginPage() {
     const token = result.data?.token;
     if (token) {
       try {
-        localStorage.setItem("izah_session_token", token);
+        await activateBrowserSession(token, result.data!.user.id);
         document.cookie = `izah_session_token=${encodeURIComponent(token)}; Path=/; Max-Age=604800; SameSite=None; Secure`;
         document.cookie = `better-auth.session_token=${encodeURIComponent(token)}; Path=/; Max-Age=604800; SameSite=None; Secure`;
       } catch {}
@@ -342,20 +345,6 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
-
-          {/* Quick PIN info pill */}
-          {authMode === "pin" && (
-            <div
-              id="pin-quick-hints"
-              className="mb-5 flex items-center justify-center gap-2 rounded-xl bg-amber-50/80 border border-amber-200/60 px-3 py-1.5 text-xs text-amber-900"
-            >
-              <KeyRound className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <span className="font-medium">
-                Default PIN: <strong className="font-bold">1234</strong> (Admin) •{" "}
-                <strong className="font-bold">5678</strong> (Cashier)
-              </span>
-            </div>
-          )}
 
           {authMode === "pin" ? (
             <div id="pin-auth-container" className="space-y-5">
@@ -512,35 +501,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Quick Quick-Fill buttons for testing */}
-              <div className="flex items-center justify-center gap-2 pt-1">
-                <button
-                  type="button"
-                  id="quick-pin-admin"
-                  onClick={() => {
-                    const admin = staffList.find((s) => s.role === "ADMIN");
-                    if (admin) setSelectedStaff(admin);
-                    setPin("1234");
-                    handlePinSubmit("1234", admin?.id);
-                  }}
-                  className="text-[11px] font-medium text-[#0f2044] bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
-                >
-                  Quick Admin (1234)
-                </button>
-                <button
-                  type="button"
-                  id="quick-pin-cashier"
-                  onClick={() => {
-                    const cashier = staffList.find((s) => s.role === "CASHIER");
-                    if (cashier) setSelectedStaff(cashier);
-                    setPin("5678");
-                    handlePinSubmit("5678", cashier?.id);
-                  }}
-                  className="text-[11px] font-medium text-[#0f2044] bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
-                >
-                  Quick Cashier (5678)
-                </button>
-              </div>
             </div>
           ) : (
             /* Email & Password Form */

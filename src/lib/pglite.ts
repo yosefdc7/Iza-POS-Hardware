@@ -13,6 +13,7 @@ interface SyncQueueItem {
   endpoint: string;
   method: string;
   payload: unknown;
+  ownerUserId?: string;
   synced: boolean;
   createdAt: number;
 }
@@ -72,6 +73,7 @@ export async function enqueueOfflineWrite(
       endpoint,
       method,
       payload,
+      ownerUserId: localStorage.getItem("izah_user_id") || undefined,
       synced: false,
       createdAt: Date.now(),
     };
@@ -83,7 +85,7 @@ export async function enqueueOfflineWrite(
 
 /** Return all pending (unsynced) items in the queue. */
 export async function getPendingQueue(): Promise<
-  { id: number; endpoint: string; method: string; payload: unknown }[]
+  { id: number; endpoint: string; method: string; payload: unknown; ownerUserId?: string }[]
 > {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -100,6 +102,7 @@ export async function getPendingQueue(): Promise<
           endpoint: i.endpoint,
           method: i.method,
           payload: i.payload,
+          ownerUserId: i.ownerUserId,
         }));
       resolve(pending);
     };

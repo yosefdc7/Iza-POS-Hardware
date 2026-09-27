@@ -13,7 +13,7 @@ export default defineConfig({
   reporter: "list",
 
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: process.env.E2E_BASE_URL || "http://localhost:3000",
     trace: "off",
     screenshot: "only-on-failure",
     video: "off",
@@ -24,6 +24,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
+        channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
         launchOptions: {
           args: [
             "--no-sandbox",
@@ -36,8 +37,8 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: "bun run dev",
+  webServer: process.env.E2E_BASE_URL ? undefined : {
+    command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 120_000,

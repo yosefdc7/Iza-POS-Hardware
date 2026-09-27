@@ -3,7 +3,7 @@
  * Strategy: network-first for API routes, cache-first for static assets.
  */
 
-const CACHE_NAME = "izah-pos-v2";
+const CACHE_NAME = "izah-pos-v3";
 
 const STATIC_PRECACHE = [
   "/",
@@ -35,6 +35,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  if (request.method !== "GET" || url.pathname === "/setup" || url.pathname === "/login") return;
 
   // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;

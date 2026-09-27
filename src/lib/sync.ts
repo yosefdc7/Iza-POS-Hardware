@@ -6,7 +6,7 @@
 
 import { getPendingQueue, markSynced } from "./pglite";
 
-export type SyncStatus = "idle" | "syncing" | "synced" | "error";
+export type SyncStatus = "idle" | "syncing" | "synced" | "error" | "blocked";
 
 let syncStatus: SyncStatus = "idle";
 const listeners = new Set<(status: SyncStatus) => void>();
@@ -45,8 +45,10 @@ export function replayOfflineQueue(): Promise<void> {
 
     emit("syncing");
     let hasError = false;
+    let blocked = false;
 
     for (const item of pending) {
+      if (item.ownerUserId && item.ownerUserId !== localStorage.getItem("izah_user_id")) { blocked = true; continue; }
       try {
         const res = await fetch(item.endpoint, {
           method: item.method,
@@ -66,7 +68,7 @@ export function replayOfflineQueue(): Promise<void> {
       }
     }
 
-    emit(hasError ? "error" : "synced");
+    emit(hasError ? "error" : blocked ? "blocked" : "synced");
   })().finally(() => {
     replayInFlight = null;
   });

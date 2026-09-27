@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyPin, isValidPinFormat, hashPin } from "@/lib/pin-auth";
+import { verifyPin, isValidPinFormat } from "@/lib/pin-auth";
 import { createPosCashierSession } from "@/lib/session-auth";
 
 export async function POST(req: NextRequest) {
@@ -10,19 +10,6 @@ export async function POST(req: NextRequest) {
 
     if (!pin || typeof pin !== "string" || !isValidPinFormat(pin)) {
       return NextResponse.json({ error: "PIN must be exactly 4 digits" }, { status: 400 });
-    }
-
-    // Auto-seed admin if database is completely empty
-    const userCount = await prisma.user.count();
-    if (userCount === 0) {
-      await prisma.user.create({
-        data: {
-          name: "Admin User",
-          email: "admin@example.com",
-          role: "ADMIN",
-          pin: hashPin("1234"),
-        },
-      });
     }
 
     let matchedUser = null;
@@ -38,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fallback: If no match for selected user or no userId provided, check all users
-    if (!matchedUser) {
+    if (!matchedUser && !userId) {
       const users = await prisma.user.findMany({
         where: { pin: { not: null } },
         select: { id: true, name: true, email: true, role: true, pin: true },
