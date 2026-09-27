@@ -17,3 +17,4 @@
 - Local Netlify adapter failed on a Windows CJS/webpack path in middleware. Switching to a Git-backed Netlify Linux build. No production deployment has occurred.
 - Cloud deployment initially uploaded Next output as static files because API repository linking did not auto-enable the runtime. Added explicit @netlify/plugin-nextjs configuration; no app data was touched.
 - Hosted integration and Chromium acceptance passed, including offline reconnect replay (stock exactly 18 after two sales) and packaged refund stock restoration. Acceptance deployment 6ab8c1068b13c40008ea4168, runtime commit 85ec253.
+- COMPLETE: production deployment 6ab8c24d98c19600081b669a, commit 9a643c7, https://iza-pos-hardware-eval.netlify.app. Health/setup/login checks passed. Empty production database verified. Private setup link enables form and removes token from URL. Test fixtures/uploads removed.

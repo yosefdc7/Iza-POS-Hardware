@@ -4,7 +4,7 @@
 Deploy a fresh empty Iza POS store on Netlify Free and Supabase Free and deliver verified access and private setup links.
 
 ## Status
-Hosted acceptance checks passed. Ready for production publication from codex/deploy-free-evaluation. No administrator created in production.
+Complete: production is live at https://iza-pos-hardware-eval.netlify.app. Private setup link delivered separately. No administrator created in production.
 
 ## Completed
 - Netlify/Supabase browser setup, private credentials, pooled PostgreSQL connections and separate production/acceptance databases.
@@ -30,8 +30,12 @@ See Git commits and docs/deployment-progress.md.
 - Hosted Chromium test passed login, catalog create/refresh, reports, checkout/receipt, offline sale queue and reconnect replay with exact stock check.
 - Acceptance runtime commit 85ec253; URL https://acceptance--iza-pos-hardware-eval.netlify.app; deployment 6ab8c1068b13c40008ea4168.
 
+- Production deployment 6ab8c24d98c19600081b669a, runtime commit 9a643c7. Health 200; setup incomplete; zero staff/products/sales; invalid bootstrap token rejected. Private-link browser load enables setup form and clears URL fragment.
+- Acceptance fixtures and test uploaded images removed after passing tests.
+
 ## Next
-Publish production, verify health and empty-store counts, then deliver the private bootstrap link. Update this file with the final deployment evidence.
+User opens the private setup link to create their administrator account. Future app changes pushed to codex/deploy-free-evaluation deploy automatically.
 
 ## Blockers / Unknowns
 No account handoff needed. Hardware printer interaction is not part of the automated browser verification.
+
