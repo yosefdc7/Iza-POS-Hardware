@@ -124,4 +124,37 @@ describe("daily ledger pricing and company totals", () => {
     expect(row1).toContain("75");
     expect(row1).toContain("80");
   });
+
+  it("redacts financial amounts in ledger totals and CSV when downloaded by staff", () => {
+    const staffTotals = calculateLedgerTotals(sampleSales, false);
+    expect(staffTotals.sales).toBe(3);
+    expect(staffTotals.grossRevenue).toBe(0);
+    expect(staffTotals.refunds).toBe(0);
+    expect(staffTotals.grossProfit).toBe(0);
+    expect(staffTotals.totalBaseValue).toBe(0);
+    expect(staffTotals.totalSellingValue).toBe(0);
+    expect(staffTotals.seriesTotals).toEqual({});
+
+    const staffRows = formatLedgerCsvRows(sampleSales, false);
+    const header = staffRows[0];
+    expect(header).not.toContain("Base Price");
+    expect(header).not.toContain("Selling Price");
+    expect(header).not.toContain("Unit Cost");
+    expect(header).not.toContain("Gross Profit");
+    expect(header).not.toContain("Selling Value");
+    expect(header).not.toContain("Sale Total");
+    expect(header).not.toContain("Refund Total");
+    expect(header).toContain("Qty");
+    expect(header).toContain("Unit");
+    expect(header).toContain("Item");
+
+    // Row 1 should have item details but no prices
+    const row1 = staffRows[1];
+    expect(row1).toContain("Rayvill");
+    expect(row1).toContain("White Sand");
+    expect(row1).toContain("Bags");
+    expect(row1).toContain("15");
+    // Ensure no monetary fields are in the row
+    expect(row1.split(",")).toHaveLength(header.split(",").length);
+  });
 });

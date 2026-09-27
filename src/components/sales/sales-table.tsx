@@ -28,9 +28,10 @@ interface Sale {
 
 interface SalesTableProps {
   sales: Sale[];
+  isStaff?: boolean;
 }
 
-export function SalesTable({ sales }: SalesTableProps) {
+export function SalesTable({ sales, isStaff = false }: SalesTableProps) {
   const t = useTranslations("sales");
   const tr = useTranslations("receipt");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -74,7 +75,7 @@ export function SalesTable({ sales }: SalesTableProps) {
                   {t("status")}
                 </th>
                 <th className="text-muted-foreground/90 px-4 py-3 text-right text-[11px] font-bold tracking-wider uppercase">
-                  {t("total")}
+                  {isStaff ? "Items / Qty" : t("total")}
                 </th>
                 <th className="text-muted-foreground/90 px-4 py-3 text-center text-[11px] font-bold tracking-wider uppercase">
                   {t("actions")}
@@ -129,12 +130,19 @@ export function SalesTable({ sales }: SalesTableProps) {
                         {sale.status}
                       </span>
                     </td>
-                    <td className="text-foreground px-4 py-3.5 text-right font-mono font-bold">
-                      {formatCurrency(parseFloat(sale.total.toString()))}
+                    <td className="text-foreground px-4 py-3.5 text-right font-mono">
+                      {isStaff ? (
+                        <span className="text-xs font-semibold">
+                          {sale.items.length} {sale.items.length === 1 ? "item" : "items"} (
+                          {sale.items.reduce((s, it) => s + Number(it.quantity), 0)} qty)
+                        </span>
+                      ) : (
+                        <span className="font-bold">{formatCurrency(parseFloat(sale.total.toString()))}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center">
-                        {(sale.status === "COMPLETED" || sale.status === "PARTIALLY_REFUNDED") && (
+                        {!isStaff && (sale.status === "COMPLETED" || sale.status === "PARTIALLY_REFUNDED") && (
                           <button
                             onClick={() => setRefunding(sale)}
                             className="border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium shadow-2xs transition-colors"
@@ -165,8 +173,12 @@ export function SalesTable({ sales }: SalesTableProps) {
                             <tr>
                               <th className="py-1.5 text-left">{tr("items")}</th>
                               <th className="py-1.5 text-right">{tr("qty")}</th>
-                              <th className="py-1.5 text-right">{tr("price")}</th>
-                              <th className="py-1.5 text-right">{t("total")}</th>
+                              {!isStaff && (
+                                <>
+                                  <th className="py-1.5 text-right">{tr("price")}</th>
+                                  <th className="py-1.5 text-right">{t("total")}</th>
+                                </>
+                              )}
                             </tr>
                           </thead>
                           <tbody className="divide-border/30 divide-y">
@@ -183,12 +195,16 @@ export function SalesTable({ sales }: SalesTableProps) {
                                     )}
                                   </td>
                                   <td className="py-2 text-right font-mono">{String(item.quantity)}</td>
-                                  <td className="text-muted-foreground py-2 text-right font-mono">
-                                    {formatCurrency(parseFloat(item.price.toString()))}
-                                  </td>
-                                  <td className="text-foreground py-2 text-right font-mono font-bold">
-                                    {formatCurrency(parseFloat(item.total.toString()))}
-                                  </td>
+                                  {!isStaff && (
+                                    <>
+                                      <td className="text-muted-foreground py-2 text-right font-mono">
+                                        {formatCurrency(parseFloat(item.price.toString()))}
+                                      </td>
+                                      <td className="text-foreground py-2 text-right font-mono font-bold">
+                                        {formatCurrency(parseFloat(item.total.toString()))}
+                                      </td>
+                                    </>
+                                  )}
                                 </tr>
                               );
                             })}

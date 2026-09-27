@@ -9,6 +9,7 @@ const PRODUCT_SELECT = {
   price: true,
   stock: true,
   unit: true,
+  tag: true,
   quantityPrecision: true,
   lowStockThreshold: true,
   sku: true,
@@ -42,6 +43,7 @@ type ProductWithPackagings = {
   price: { toString(): string };
   stock: { toString(): string };
   unit: string;
+  tag?: string | null;
   quantityPrecision: number;
   lowStockThreshold: { toString(): string };
   sku: string | null;
@@ -90,8 +92,9 @@ export async function GET(req: NextRequest) {
     where: {
       active: true,
       OR: [
-        { name: { contains: q } },
-        { sku: { contains: q } },
+        { name: { contains: q, mode: "insensitive" } },
+        { sku: { contains: q, mode: "insensitive" } },
+        { tag: { contains: q, mode: "insensitive" } },
         { barcode: { equals: q } },
         { packagings: { some: { barcode: { equals: q } } } },
       ],

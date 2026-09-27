@@ -176,6 +176,7 @@ export default async function ProductDetailPage({ params }: Props) {
               {product.sku && <span>SKU: <span className="font-mono font-semibold">{product.sku}</span></span>}
               {product.barcode && <span>Barcode: <span className="font-mono font-semibold">{product.barcode}</span></span>}
               {product.category && <span>Category: <span className="font-semibold">{product.category}</span></span>}
+              {product.tag && <span>Tag: <span className="font-semibold px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20 text-xs">{product.tag}</span></span>}
               {product.supplier && <span>Supplier: <span className="font-semibold">{product.supplier.name}</span></span>}
             </div>
           </div>

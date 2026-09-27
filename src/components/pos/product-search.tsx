@@ -29,6 +29,7 @@ interface ProductResult {
   barcode?: string | null;
   sku?: string | null;
   category?: string | null;
+  tag?: string | null;
   imageUrl?: string | null;
   packagings?: PackagingOption[];
 }
@@ -300,6 +301,20 @@ export function ProductSearch() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">{p.name}</p>
+                        {p.tag && (
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0",
+                              p.tag === "CHB"
+                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                                : p.tag === "211"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                            )}
+                          >
+                            {p.tag}
+                          </span>
+                        )}
                         {isZero && (
                           <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30">
                             OUT OF STOCK
@@ -456,10 +471,26 @@ export function ProductSearch() {
                     )}
                   >
                     <div className="flex w-full items-start justify-between gap-1">
-                      <p className="text-xs font-semibold leading-tight line-clamp-2 flex-1 text-foreground group-hover:text-primary transition-colors">
-                        {p.name}
-                      </p>
-                      <div className="h-5 w-5 rounded-md border border-border/60 flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary/40 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold leading-tight line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                          {p.name}
+                        </p>
+                        {p.tag && (
+                          <span
+                            className={cn(
+                              "text-[9px] font-bold px-1.5 py-0.2 rounded-full border inline-block mt-0.5",
+                              p.tag === "CHB"
+                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                                : p.tag === "211"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                            )}
+                          >
+                            {p.tag}
+                          </span>
+                        )}
+                      </div>
+                      <div className="h-5 w-5 rounded-md border border-border/60 flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary/40 transition-colors shrink-0">
                         <Plus className="h-3 w-3" />
                       </div>
                     </div>

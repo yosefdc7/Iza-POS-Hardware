@@ -10,6 +10,7 @@ export const productFormSchema = z.object({
   unit: z.string().trim().min(1).max(20).default("pc"),
   quantityPrecision: z.coerce.number().int().min(0).max(4).default(0),
   category: z.string().max(100).optional().or(z.literal("")),
+  tag: z.string().trim().max(50).optional().or(z.literal("")),
   lowStockThreshold: z.coerce.number().min(0).default(5),
   imageUrl: z.string().url().optional().or(z.literal("")),
   active: z.preprocess((val) => {

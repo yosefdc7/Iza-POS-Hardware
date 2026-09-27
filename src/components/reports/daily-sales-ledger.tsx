@@ -224,26 +224,37 @@ export function DailySalesLedger({ isAdmin }: { isAdmin: boolean }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        <Metric label="Receipts on page" value={String(data.totals?.sales ?? 0)} />
-        <Metric label="Gross revenue" value={formatCurrency(data.totals?.grossRevenue ?? 0)} />
-        {data.totals?.seriesTotals?.["211"] != null && (
-          <Metric label="211 Receipts" value={formatCurrency(data.totals.seriesTotals["211"])} />
-        )}
-        {data.totals?.seriesTotals?.["CHB"] != null && (
-          <Metric label="CHB Receipts" value={formatCurrency(data.totals.seriesTotals["CHB"])} />
-        )}
-        {data.totals?.totalBaseValue != null && (
-          <Metric label="Total Base Value" value={formatCurrency(data.totals.totalBaseValue)} />
-        )}
-        {data.totals?.totalSellingValue != null && (
-          <Metric label="Total Selling Value" value={formatCurrency(data.totals.totalSellingValue)} />
-        )}
-        <Metric label="Refunds" value={formatCurrency(data.totals?.refunds ?? 0)} />
-        {isAdmin && (
+      {isAdmin ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          <Metric label="Receipts on page" value={String(data.totals?.sales ?? 0)} />
+          <Metric label="Gross revenue" value={formatCurrency(data.totals?.grossRevenue ?? 0)} />
+          {data.totals?.seriesTotals?.["211"] != null && (
+            <Metric label="211 Receipts" value={formatCurrency(data.totals.seriesTotals["211"])} />
+          )}
+          {data.totals?.seriesTotals?.["CHB"] != null && (
+            <Metric label="CHB Receipts" value={formatCurrency(data.totals.seriesTotals["CHB"])} />
+          )}
+          {data.totals?.totalBaseValue != null && (
+            <Metric label="Total Base Value" value={formatCurrency(data.totals.totalBaseValue)} />
+          )}
+          {data.totals?.totalSellingValue != null && (
+            <Metric label="Total Selling Value" value={formatCurrency(data.totals.totalSellingValue)} />
+          )}
+          <Metric label="Refunds" value={formatCurrency(data.totals?.refunds ?? 0)} />
           <Metric label="Gross profit" value={formatCurrency(data.totals?.grossProfit ?? 0)} />
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Metric label="Receipts in view" value={String(data.totals?.sales ?? 0)} />
+          <Metric
+            label="Total Items Sold"
+            value={String(
+              data.sales.reduce((sum, s) => sum + s.items.reduce((iSum, it) => iSum + it.quantity, 0), 0)
+            )}
+          />
+          <Metric label="Total Receipts (Scope)" value={String(data.totalCount ?? 0)} />
+        </div>
+      )}
 
       <div className="hidden text-sm print:block">
         <h2 className="text-xl font-bold">Daily Sales Ledger</h2>
@@ -351,15 +362,15 @@ function ReceiptGroup({
             <tr className="text-muted-foreground border-b text-left">
               <th className="p-2">Item</th>
               <th className="p-2 text-right">Quantity</th>
-              <th className="p-2 text-right">Base price</th>
-              <th className="p-2 text-right">Selling price</th>
               {isAdmin && (
                 <>
+                  <th className="p-2 text-right">Base price</th>
+                  <th className="p-2 text-right">Selling price</th>
                   <th className="p-2 text-right">Unit cost</th>
                   <th className="p-2 text-right">Profit</th>
+                  <th className="p-2 text-right">Selling value</th>
                 </>
               )}
-              <th className="p-2 text-right">Selling value</th>
             </tr>
           </thead>
           <tbody>
@@ -369,37 +380,48 @@ function ReceiptGroup({
                 <td className="p-2 text-right font-mono">
                   {item.quantity} {item.unit}
                 </td>
-                <td className="p-2 text-right font-mono text-muted-foreground">
-                  {formatCurrency(item.basePrice ?? item.unitPrice)}
-                </td>
-                <td className="p-2 text-right font-mono font-medium">
-                  {formatCurrency(item.unitPrice)}
-                </td>
                 {isAdmin && (
                   <>
+                    <td className="p-2 text-right font-mono text-muted-foreground">
+                      {formatCurrency(item.basePrice ?? item.unitPrice)}
+                    </td>
+                    <td className="p-2 text-right font-mono font-medium">
+                      {formatCurrency(item.unitPrice)}
+                    </td>
                     <td className="p-2 text-right font-mono">
                       {item.unitCost == null ? "Unknown" : formatCurrency(item.unitCost)}
                     </td>
                     <td className="p-2 text-right font-mono">
                       {item.grossProfit == null ? "Unknown" : formatCurrency(item.grossProfit)}
                     </td>
+                    <td className="p-2 text-right font-mono font-semibold">
+                      {formatCurrency(item.sellingValue)}
+                    </td>
                   </>
                 )}
-                <td className="p-2 text-right font-mono font-semibold">
-                  {formatCurrency(item.sellingValue)}
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <footer className="flex justify-end gap-5 border-t px-3 py-2 text-xs">
-        <span>
-          Refunds: <b>{formatCurrency(sale.refundTotal)}</b>
-        </span>
-        <span>
-          Sale total: <b>{formatCurrency(sale.total)}</b>
-        </span>
+        {isAdmin ? (
+          <>
+            <span>
+              Refunds: <b>{formatCurrency(sale.refundTotal)}</b>
+            </span>
+            <span>
+              Sale total: <b>{formatCurrency(sale.total)}</b>
+            </span>
+          </>
+        ) : (
+          <span>
+            Total Items:{" "}
+            <b>
+              {sale.items.length} ({sale.items.reduce((s, it) => s + it.quantity, 0)} units)
+            </b>
+          </span>
+        )}
       </footer>
     </article>
   );

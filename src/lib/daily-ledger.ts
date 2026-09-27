@@ -111,7 +111,7 @@ export function businessDateForInstant(instant: Date, timeZone: string) {
 }
 
 export function canViewLedgerField(role: LedgerRole, field: LedgerProtectedField) {
-  return role === "ADMIN" || field === "sellingValue";
+  return role === "ADMIN";
 }
 
 export function resolveLedgerScope(input: {
@@ -195,31 +195,35 @@ export function calculateLedgerTotals(
   let refunds = 0;
 
   for (const sale of sales) {
-    grossRevenue += sale.total;
-    refunds += sale.refundTotal;
+    if (isAdmin) {
+      grossRevenue += sale.total;
+      refunds += sale.refundTotal;
 
-    const sName = sale.seriesName || "Other";
-    seriesTotals[sName] = (seriesTotals[sName] || 0) + sale.total;
+      const sName = sale.seriesName || "Other";
+      seriesTotals[sName] = (seriesTotals[sName] || 0) + sale.total;
+    }
 
     for (const item of sale.items) {
-      totalSellingValue += item.sellingValue;
-      const effectiveBasePrice = item.basePrice ?? item.unitPrice;
-      totalBaseValue += effectiveBasePrice * item.quantity;
+      if (isAdmin) {
+        totalSellingValue += item.sellingValue;
+        const effectiveBasePrice = item.basePrice ?? item.unitPrice;
+        totalBaseValue += effectiveBasePrice * item.quantity;
 
-      if (isAdmin && item.grossProfit != null) {
-        grossProfit += item.grossProfit;
+        if (item.grossProfit != null) {
+          grossProfit += item.grossProfit;
+        }
       }
     }
   }
 
   return {
     sales: sales.length,
-    grossRevenue,
-    refunds,
-    grossProfit,
-    seriesTotals,
-    totalBaseValue,
-    totalSellingValue,
+    grossRevenue: isAdmin ? grossRevenue : 0,
+    refunds: isAdmin ? refunds : 0,
+    grossProfit: isAdmin ? grossProfit : 0,
+    seriesTotals: isAdmin ? seriesTotals : {},
+    totalBaseValue: isAdmin ? totalBaseValue : 0,
+    totalSellingValue: isAdmin ? totalSellingValue : 0,
   };
 }
 
@@ -227,23 +231,36 @@ export function formatLedgerCsvRows(
   sales: LedgerSaleData[],
   isAdmin: boolean
 ): string[] {
-  const columns = [
-    "Business Date",
-    "Customer",
-    "Receipt",
-    "DR / SI No.",
-    "Qty",
-    "Unit",
-    "Item",
-    "Base Price",
-    "Selling Price",
-    ...(isAdmin ? ["Unit Cost", "Gross Profit"] : []),
-    "Selling Value",
-    "Sale Total",
-    "Refund Total",
-    "Cashier",
-    "Status",
-  ];
+  const columns = isAdmin
+    ? [
+        "Business Date",
+        "Customer",
+        "Receipt",
+        "DR / SI No.",
+        "Qty",
+        "Unit",
+        "Item",
+        "Base Price",
+        "Selling Price",
+        "Unit Cost",
+        "Gross Profit",
+        "Selling Value",
+        "Sale Total",
+        "Refund Total",
+        "Cashier",
+        "Status",
+      ]
+    : [
+        "Business Date",
+        "Customer",
+        "Receipt",
+        "DR / SI No.",
+        "Qty",
+        "Unit",
+        "Item",
+        "Cashier",
+        "Status",
+      ];
 
   const rows = [columns.map(csvCell).join(",")];
 
@@ -256,28 +273,47 @@ export function formatLedgerCsvRows(
     });
 
     for (const item of sale.items) {
-      const effectiveBasePrice = item.basePrice ?? item.unitPrice;
-      rows.push(
-        [
-          sale.businessDate,
-          sale.customer,
-          receiptRef.label,
-          sale.drSiNumber ?? "",
-          item.quantity,
-          item.unit,
-          item.name,
-          effectiveBasePrice,
-          item.unitPrice,
-          ...(isAdmin ? [item.unitCost ?? "", item.grossProfit ?? ""] : []),
-          item.sellingValue,
-          sale.total,
-          sale.refundTotal,
-          sale.cashier,
-          sale.status,
-        ]
-          .map(csvCell)
-          .join(",")
-      );
+      if (isAdmin) {
+        const effectiveBasePrice = item.basePrice ?? item.unitPrice;
+        rows.push(
+          [
+            sale.businessDate,
+            sale.customer,
+            receiptRef.label,
+            sale.drSiNumber ?? "",
+            item.quantity,
+            item.unit,
+            item.name,
+            effectiveBasePrice,
+            item.unitPrice,
+            item.unitCost ?? "",
+            item.grossProfit ?? "",
+            item.sellingValue,
+            sale.total,
+            sale.refundTotal,
+            sale.cashier,
+            sale.status,
+          ]
+            .map(csvCell)
+            .join(",")
+        );
+      } else {
+        rows.push(
+          [
+            sale.businessDate,
+            sale.customer,
+            receiptRef.label,
+            sale.drSiNumber ?? "",
+            item.quantity,
+            item.unit,
+            item.name,
+            sale.cashier,
+            sale.status,
+          ]
+            .map(csvCell)
+            .join(",")
+        );
+      }
     }
   }
 

@@ -60,11 +60,12 @@ describe("daily ledger domain", () => {
     );
   });
 
-  it("prevents cashiers from viewing cost and profit fields", () => {
+  it("prevents cashiers from viewing cost, profit, and selling value fields", () => {
     expect(canViewLedgerField("CASHIER", "unitCost")).toBe(false);
     expect(canViewLedgerField("CASHIER", "grossProfit")).toBe(false);
-    expect(canViewLedgerField("CASHIER", "sellingValue")).toBe(true);
+    expect(canViewLedgerField("CASHIER", "sellingValue")).toBe(false);
     expect(canViewLedgerField("ADMIN", "unitCost")).toBe(true);
+    expect(canViewLedgerField("ADMIN", "sellingValue")).toBe(true);
   });
 
   it("forces cashiers to their own current business day", () => {

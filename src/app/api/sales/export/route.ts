@@ -67,42 +67,69 @@ export async function GET(request: NextRequest) {
   });
 
   // Build CSV
-  const rows: string[] = [
-    [
-      "Sale ID",
-      "Business Date",
-      "Status",
-      "Payment Method",
-      "Subtotal",
-      "Discount",
-      "Tax",
-      "Total",
-      "Items",
-    ]
-      .map(csvCell)
-      .join(","),
-  ];
+  const columns = isAdmin
+    ? [
+        "Sale ID",
+        "Business Date",
+        "Status",
+        "Payment Method",
+        "Subtotal",
+        "Discount",
+        "Tax",
+        "Total",
+        "Total Quantity",
+        "Items",
+      ]
+    : [
+        "Sale ID",
+        "Business Date",
+        "Status",
+        "Payment Method",
+        "Items Count",
+        "Total Quantity",
+        "Items",
+      ];
+
+  const rows: string[] = [columns.map(csvCell).join(",")];
 
   for (const sale of sales) {
+    const totalQty = sale.items.reduce((sum, item) => sum + Number(item.quantity), 0);
     const itemsSummary = sale.items
       .map((i: (typeof sale.items)[number]) => `${i.quantity}x ${i.name}`)
       .join("; ");
 
-    rows.push(
-      [
-        sale.id,
-        businessDateForInstant(sale.createdAt, timeZone),
-        sale.status,
-        sale.paymentMethod,
-        sale.subtotal.toFixed(2),
-        sale.discountAmount.toFixed(2),
-        sale.taxAmount.toFixed(2),
-        sale.total.toFixed(2),
-        itemsSummary,
-      ]
-        .map(csvCell)
-        .join(",")
-    );
+    if (isAdmin) {
+      rows.push(
+        [
+          sale.id,
+          businessDateForInstant(sale.createdAt, timeZone),
+          sale.status,
+          sale.paymentMethod,
+          sale.subtotal.toFixed(2),
+          sale.discountAmount.toFixed(2),
+          sale.taxAmount.toFixed(2),
+          sale.total.toFixed(2),
+          totalQty.toString(),
+          itemsSummary,
+        ]
+          .map(csvCell)
+          .join(",")
+      );
+    } else {
+      rows.push(
+        [
+          sale.id,
+          businessDateForInstant(sale.createdAt, timeZone),
+          sale.status,
+          sale.paymentMethod,
+          sale.items.length.toString(),
+          totalQty.toString(),
+          itemsSummary,
+        ]
+          .map(csvCell)
+          .join(",")
+      );
+    }
   }
 
   const csv = rows.join("\n");

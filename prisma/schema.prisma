@@ -111,6 +111,7 @@ model Product {
   unit              String   @default("pc")
   quantityPrecision Int      @default(0)
   category          String?
+  tag               String?
   imageUrl          String?
   lowStockThreshold Decimal  @default(5) @db.Decimal(14, 4)
   active            Boolean  @default(true)
@@ -123,6 +124,8 @@ model Product {
   supplier         Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   packagings       ProductPackaging[]
   changeRequests   ProductChangeRequest[]
+
+  @@index([tag])
 }
 
 model ProductChangeRequest {

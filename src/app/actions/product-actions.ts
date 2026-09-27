@@ -38,6 +38,7 @@ export async function createProduct(formData: FormData) {
     sku: parsed.data.sku || null,
     barcode: parsed.data.barcode || null,
     category: parsed.data.category || null,
+    tag: parsed.data.tag || null,
     imageUrl: parsed.data.imageUrl || null,
   };
 

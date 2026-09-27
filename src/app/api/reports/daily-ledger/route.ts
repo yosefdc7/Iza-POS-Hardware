@@ -163,9 +163,9 @@ export async function GET(req: NextRequest) {
         name: item.name,
         quantity,
         unit: item.unit,
-        unitPrice,
-        basePrice,
-        sellingValue,
+        unitPrice: isAdmin ? unitPrice : 0,
+        basePrice: isAdmin ? basePrice : null,
+        sellingValue: isAdmin ? sellingValue : 0,
         ...(isAdmin
           ? { unitCost, grossProfit: unitCost == null ? null : sellingValue - unitCost * quantity }
           : {}),
@@ -188,8 +188,8 @@ export async function GET(req: NextRequest) {
       customer: sale.customer?.name ?? "Cash",
       cashier: sale.user.name,
       status: sale.status,
-      total: parseFloat(sale.total.toString()),
-      refundTotal,
+      total: isAdmin ? parseFloat(sale.total.toString()) : 0,
+      refundTotal: isAdmin ? refundTotal : 0,
       items,
     };
   });

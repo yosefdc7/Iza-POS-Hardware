@@ -21,6 +21,7 @@ interface Product {
   unit: string;
   quantityPrecision: number;
   category: string | null;
+  tag?: string | null;
   imageUrl: string | null;
   lowStockThreshold: { toString(): string };
   active: boolean;
@@ -36,6 +37,11 @@ export function ProductForm({ product, isStaff = false }: ProductFormProps) {
   const [reason, setReason] = useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(product?.imageUrl ?? null);
+
+  // Tag classification state
+  const [customTags, setCustomTags] = useState<string[]>(product?.tag ? [product.tag] : []);
+  const [showCustomTag, setShowCustomTag] = useState(false);
+  const [customTagInput, setCustomTagInput] = useState("");
 
   // Hardware units state
   const [units, setUnits] = useState<UnitOption[]>(DEFAULT_HARDWARE_UNITS);
@@ -71,11 +77,12 @@ export function ProductForm({ product, isStaff = false }: ProductFormProps) {
           unit: product.unit,
           quantityPrecision: product.quantityPrecision,
           category: product.category ?? "",
+          tag: product.tag ?? "",
           lowStockThreshold: parseFloat(String(product.lowStockThreshold)),
           imageUrl: product.imageUrl ?? "",
           active: product.active,
         }
-      : { stock: 0, unit: "pc", quantityPrecision: 0, lowStockThreshold: 5, active: true },
+      : { stock: 0, unit: "pc", tag: "", quantityPrecision: 0, lowStockThreshold: 5, active: true },
   });
 
   const watchedPrice = watch("price") || 0;
@@ -492,7 +499,74 @@ export function ProductForm({ product, isStaff = false }: ProductFormProps) {
         </div>
       )}
 
-      {field("Category", "category", { placeholder: "Hardware, Electrical, Plumbing" })}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {field("Category", "category", { placeholder: "Hardware, Electrical, Plumbing" })}
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Tag / Classification</label>
+          <div className="flex gap-2">
+            {!showCustomTag ? (
+              <select
+                {...registerField("tag")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") {
+                    setShowCustomTag(true);
+                    setValue("tag", "");
+                  } else {
+                    setValue("tag", e.target.value);
+                  }
+                }}
+              >
+                <option value="">None (Standard / General)</option>
+                <option value="CHB">CHB (Concrete Hollow Blocks)</option>
+                <option value="211">211 (2-1-1 Mix / Aggregates)</option>
+                {customTags.filter((t) => t !== "CHB" && t !== "211" && t !== "").map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+                <option value="__custom__">+ Custom Tag...</option>
+              </select>
+            ) : (
+              <div className="flex gap-1.5 flex-1">
+                <input
+                  type="text"
+                  placeholder="Enter custom tag..."
+                  value={customTagInput}
+                  onChange={(e) => setCustomTagInput(e.target.value)}
+                  className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = customTagInput.trim().toUpperCase();
+                    if (trimmed) {
+                      if (!customTags.includes(trimmed)) setCustomTags((prev) => [...prev, trimmed]);
+                      setValue("tag", trimmed);
+                    }
+                    setShowCustomTag(false);
+                    setCustomTagInput("");
+                  }}
+                  className="bg-primary text-primary-foreground px-3 py-2 text-xs font-semibold rounded-md"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomTag(false);
+                    setCustomTagInput("");
+                  }}
+                  className="border px-2.5 py-2 text-xs rounded-md"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Tag items like CHB or 211 for dedicated classification and filtering.</p>
+        </div>
+      </div>
 
       {/* Image upload */}
       <div className="space-y-2">

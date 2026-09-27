@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 import { serialize } from "@/lib/serialize";
+import { requireStaff } from "@/lib/require-staff";
 import { SalesTable } from "@/components/sales/sales-table";
 import { SalesExportButton } from "@/components/sales/sales-export-button";
 import { DbError } from "@/components/ui/db-error";
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Sales" };
 
 export default async function SalesPage() {
   noStore();
+  const { user } = await requireStaff();
   const t = await getTranslations("sales");
 
   let sales;
@@ -32,7 +34,7 @@ export default async function SalesPage() {
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <SalesExportButton />
       </div>
-      <SalesTable sales={sales} />
+      <SalesTable sales={sales} isStaff={user.role !== "ADMIN"} />
     </div>
   );
 }
