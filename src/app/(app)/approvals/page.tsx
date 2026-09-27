@@ -8,7 +8,12 @@ const value=(v:unknown)=>v==null?'—':String(v);
 export default async function ApprovalsPage({searchParams}:{searchParams:Promise<{page?:string}>}) {
  const {user}=await requireStaff();const isAdmin=user.role==='ADMIN';
  const page=Math.max(1,Number((await searchParams).page)||1);
- const requests=await prisma.productChangeRequest.findMany({where:isAdmin?{}:{requesterId:user.id},include:{product:{include:{packagings:true}}},orderBy:[{createdAt:'desc'}],take:50,skip:(page-1)*50});
+ let requests: any[] = [];
+ try {
+  requests = await prisma.productChangeRequest.findMany({where:isAdmin?{}:{requesterId:user.id},include:{product:{include:{packagings:true}}},orderBy:[{createdAt:'desc'}],take:50,skip:(page-1)*50});
+ } catch {
+  requests = [];
+ }
  return <main className="p-4 sm:p-6 space-y-4"><h1 className="text-2xl font-bold">{isAdmin?'Approvals':'My requests'}</h1><p className="text-muted-foreground">Changes take effect only after approval. Rejected and cancelled requests leave the item unchanged.</p>
  {!requests.length&&<p>No requests yet.</p>}
  {requests.map(r=>{

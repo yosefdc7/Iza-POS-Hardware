@@ -14,7 +14,14 @@ export const metadata: Metadata = { title: "Products" };
 export default async function ProductsPage() {
   noStore();
   const {user}=await requireStaff();
-  const pending=await prisma.productChangeRequest.count({where:{status:"PENDING",...(user.role==="ADMIN"?{}:{requesterId:user.id})}});
+  let pending = 0;
+  try {
+    pending = await prisma.productChangeRequest.count({
+      where: { status: "PENDING", ...(user.role === "ADMIN" ? {} : { requesterId: user.id }) },
+    });
+  } catch {
+    pending = 0;
+  }
   const t = await getTranslations("products");
 
   let products;
